@@ -259,7 +259,6 @@ window.initializeChart = function (id, traces, exemplarTrace, rangeStartTime, ra
         traceData: exemplarTrace.traceData,
         mode: 'markers',
         type: 'scatter',
-        showlegend: false,
         marker: {
             size: 16,
             color: themeColors.pointColor,
@@ -325,7 +324,7 @@ window.initializeChart = function (id, traces, exemplarTrace, rangeStartTime, ra
     var currentPoint = null;
     chartDiv.on('plotly_hover', function (data) {
         var point = data.points[0];
-        if (point.fullData.name == 'exemplars') {
+        if (point.fullData.name == exemplarTrace.name) {
             currentPoint = point;
             var pointTraceData = point.data.traceData[point.pointIndex];
             dragLayer.style.cursor = 'pointer';
@@ -333,7 +332,7 @@ window.initializeChart = function (id, traces, exemplarTrace, rangeStartTime, ra
     });
     chartDiv.on('plotly_unhover', function (data) {
         var point = data.points[0];
-        if (point.fullData.name == 'exemplars') {
+        if (point.fullData.name == exemplarTrace.name) {
             currentPoint = null;
             dragLayer.style.cursor = 'default';
         }

@@ -64,7 +64,7 @@ public partial class PlotlyChart : ChartBase, IDisposable
 
         var exemplarTraceDto = new PlotlyTrace
         {
-            Name = "exemplars",
+            Name = "Exemplars",
             Y = new List<double?>(),
             X = new List<DateTimeOffset>(),
             Tooltips = new List<string?>(),
@@ -152,8 +152,8 @@ public partial class PlotlyChart : ChartBase, IDisposable
     {
         if (_chartInteropReference != null)
         {
-            _chartInteropReference.Dispose();
             _chartInteropReference.Value.Dispose();
+            _chartInteropReference.Dispose();
         }
     }
 
