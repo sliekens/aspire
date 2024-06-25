@@ -11,6 +11,7 @@ using Aspire.Dashboard.Otlp.Model;
 using Aspire.Dashboard.Otlp.Storage;
 using Aspire.Dashboard.Utils;
 using Microsoft.AspNetCore.Components;
+using Microsoft.FluentUI.AspNetCore.Components;
 using Microsoft.JSInterop;
 
 namespace Aspire.Dashboard.Components;
@@ -25,6 +26,9 @@ public partial class PlotlyChart : ChartBase, IDisposable
 
     [Inject]
     public required TelemetryRepository TelemetryRepository { get; init; }
+
+    [Inject]
+    public required IDialogService DialogService { get; init; }
 
     private DotNetObjectReference<ChartInterop>? _chartInteropReference;
 
@@ -77,11 +81,7 @@ public partial class PlotlyChart : ChartBase, IDisposable
             var key = new SpanKey(exemplarPoint.TraceId, exemplarPoint.SpanId);
             if (!currentCache.TryGetValue(key, out var span))
             {
-                var trace = TelemetryRepository.GetTrace(exemplarPoint.TraceId);
-                if (trace != null)
-                {
-                    span = trace.Spans.FirstOrDefault(s => s.SpanId == exemplarPoint.SpanId);
-                }
+                span = GetSpan(exemplarPoint.TraceId, exemplarPoint.SpanId);
             }
 
             if (span != null)
@@ -137,19 +137,102 @@ public partial class PlotlyChart : ChartBase, IDisposable
         }
     }
 
-    public void Dispose()
+    private OtlpSpan? GetSpan(string traceId, string spanId)
     {
-        _chartInteropReference?.Dispose();
+        var trace = TelemetryRepository.GetTrace(traceId);
+        if (trace == null)
+        {
+            return null;
+        }
+
+        return trace.Spans.FirstOrDefault(s => s.SpanId == spanId);
     }
 
-    private sealed class ChartInterop(PlotlyChart plotlyChart)
+    public void Dispose()
     {
+        if (_chartInteropReference != null)
+        {
+            _chartInteropReference.Dispose();
+            _chartInteropReference.Value.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// Handle user clicking on a trace point in the browser.
+    /// </summary>
+    private sealed class ChartInterop : IDisposable
+    {
+        private readonly PlotlyChart _plotlyChart;
+        private readonly CancellationTokenSource _cts;
+
+        public ChartInterop(PlotlyChart plotlyChart)
+        {
+            _plotlyChart = plotlyChart;
+            _cts = new CancellationTokenSource();
+        }
+
+        public void Dispose()
+        {
+            _cts.Cancel();
+        }
+
         [JSInvokable]
         public async Task ViewSpan(string traceId, string spanId)
         {
-            await plotlyChart.InvokeAsync(() =>
+            var span = _plotlyChart.GetSpan(traceId, spanId);
+
+            // Exemplar span isn't loaded yet. Display a dialog until the data is ready or the user cancels the dialog.
+            if (span == null)
             {
-                plotlyChart.NavigationManager.NavigateTo(DashboardUrls.TraceDetailUrl(traceId, spanId));
+                using var cts = new CancellationTokenSource();
+                using var registration = _cts.Token.Register(cts.Cancel);
+
+                var reference = await _plotlyChart.DialogService.ShowMessageBoxAsync(new DialogParameters<MessageBoxContent>()
+                {
+                    Content = new MessageBoxContent
+                    {
+                        Intent = MessageBoxIntent.Info,
+                        Icon = new Icons.Filled.Size24.Info(),
+                        IconColor = Color.Info,
+                        Message = $"Waiting for trace {OtlpHelpers.ToShortenedId(traceId)} to load...",
+                    },
+                    DialogType = DialogType.MessageBox,
+                    PrimaryAction = string.Empty,
+                    SecondaryAction = "Cancel"
+                });
+
+                // Task that polls for the span to be available.
+                var waitForTraceTask = Task.Run(async () =>
+                {
+                    while (!cts.IsCancellationRequested)
+                    {
+                        span = _plotlyChart.GetSpan(traceId, spanId);
+                        if (span != null)
+                        {
+                            await reference.CloseAsync(DialogResult.Ok<bool>(true));
+                        }
+                        else
+                        {
+                            await Task.Delay(TimeSpan.FromSeconds(0.5), cts.Token);
+                        }
+                    }
+                });
+
+                var result = await reference.Result;
+                cts.Cancel();
+
+                await TaskHelpers.WaitIgnoreCancelAsync(waitForTraceTask);
+
+                if (result.Cancelled)
+                {
+                    // Dialog was canceled before span was ready. Exit without navigating.
+                    return;
+                }
+            }
+
+            await _plotlyChart.InvokeAsync(() =>
+            {
+                _plotlyChart.NavigationManager.NavigateTo(DashboardUrls.TraceDetailUrl(traceId, spanId));
             });
         }
     }
