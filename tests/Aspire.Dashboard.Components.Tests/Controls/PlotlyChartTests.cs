@@ -9,6 +9,7 @@ using Aspire.Dashboard.Otlp.Storage;
 using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.FluentUI.AspNetCore.Components;
 using OpenTelemetry.Proto.Common.V1;
 using OpenTelemetry.Proto.Metrics.V1;
 using Xunit;
@@ -28,6 +29,7 @@ public class PlotlyChartTests : TestContext
         Services.AddSingleton<IInstrumentUnitResolver, TestInstrumentUnitResolver>();
         Services.AddSingleton<BrowserTimeProvider, TestTimeProvider>();
         Services.AddSingleton<TelemetryRepository>();
+        Services.AddSingleton<IDialogService, DialogService>();
 
         var model = new InstrumentViewModel();
 
@@ -53,6 +55,7 @@ public class PlotlyChartTests : TestContext
         Services.AddSingleton<IInstrumentUnitResolver, TestInstrumentUnitResolver>();
         Services.AddSingleton<BrowserTimeProvider, TestTimeProvider>();
         Services.AddSingleton<TelemetryRepository>();
+        Services.AddSingleton<IDialogService, DialogService>();
 
         var options = new TelemetryLimitOptions();
         var instrument = new OtlpInstrument
