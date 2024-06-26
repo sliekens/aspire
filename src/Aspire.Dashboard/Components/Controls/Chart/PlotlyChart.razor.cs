@@ -8,7 +8,6 @@ using Aspire.Dashboard.Extensions;
 using Aspire.Dashboard.Model;
 using Aspire.Dashboard.Model.Otlp;
 using Aspire.Dashboard.Otlp.Model;
-using Aspire.Dashboard.Otlp.Storage;
 using Aspire.Dashboard.Utils;
 using Microsoft.AspNetCore.Components;
 using Microsoft.FluentUI.AspNetCore.Components;
@@ -25,18 +24,9 @@ public partial class PlotlyChart : ChartBase, IDisposable
     public required NavigationManager NavigationManager { get; init; }
 
     [Inject]
-    public required TelemetryRepository TelemetryRepository { get; init; }
-
-    [Inject]
     public required IDialogService DialogService { get; init; }
 
     private DotNetObjectReference<ChartInterop>? _chartInteropReference;
-
-    // Stores a cache of the last set of spans returned as exemplars.
-    // This dictionary is replaced each time the chart is updated.
-    private Dictionary<SpanKey, OtlpSpan> _traceCache = new Dictionary<SpanKey, OtlpSpan>();
-
-    private readonly record struct SpanKey(string TraceId, string SpanId);
 
     private string FormatTooltip(string title, double yValue, DateTimeOffset xValue)
     {
@@ -59,9 +49,6 @@ public partial class PlotlyChart : ChartBase, IDisposable
             TraceData = new List<object?>()
         }).ToArray();
 
-        var currentCache = _traceCache;
-        var newCache = new Dictionary<SpanKey, OtlpSpan>();
-
         var exemplarTraceDto = new PlotlyTrace
         {
             Name = "Exemplars",
@@ -78,19 +65,8 @@ public partial class PlotlyChart : ChartBase, IDisposable
                 continue;
             }
 
-            var key = new SpanKey(exemplar.TraceId, exemplar.SpanId);
-            if (!currentCache.TryGetValue(key, out var span))
-            {
-                span = GetSpan(exemplar.TraceId, exemplar.SpanId);
-            }
-
-            if (span != null)
-            {
-                newCache[key] = span;
-            }
-
-            var title = span != null
-                ? SpanWaterfallViewModel.GetTitle(span, Applications)
+            var title = exemplar.Span != null
+                ? SpanWaterfallViewModel.GetTitle(exemplar.Span, Applications)
                 : $"Trace: {OtlpHelpers.ToShortenedId(exemplar.TraceId)}";
             var tooltip = FormatTooltip(title, exemplar.Value, exemplar.Start);
 
@@ -99,8 +75,6 @@ public partial class PlotlyChart : ChartBase, IDisposable
             exemplarTraceDto.Tooltips.Add(tooltip);
             exemplarTraceDto.TraceData.Add(new { TraceId = exemplar.TraceId, SpanId = exemplar.SpanId });
         }
-
-        _traceCache = newCache;
 
         if (!tickUpdate)
         {
@@ -137,17 +111,6 @@ public partial class PlotlyChart : ChartBase, IDisposable
         }
     }
 
-    private OtlpSpan? GetSpan(string traceId, string spanId)
-    {
-        var trace = TelemetryRepository.GetTrace(traceId);
-        if (trace == null)
-        {
-            return null;
-        }
-
-        return trace.Spans.FirstOrDefault(s => s.SpanId == spanId);
-    }
-
     public void Dispose()
     {
         if (_chartInteropReference != null)
@@ -179,61 +142,20 @@ public partial class PlotlyChart : ChartBase, IDisposable
         [JSInvokable]
         public async Task ViewSpan(string traceId, string spanId)
         {
-            var span = _plotlyChart.GetSpan(traceId, spanId);
+            var available = await MetricsHelpers.WaitForSpanToBeAvailableAsync(
+                traceId,
+                spanId,
+                _plotlyChart.GetSpan,
+                _plotlyChart.DialogService,
+                _cts.Token).ConfigureAwait(false);
 
-            // Exemplar span isn't loaded yet. Display a dialog until the data is ready or the user cancels the dialog.
-            if (span == null)
+            if (available)
             {
-                using var cts = new CancellationTokenSource();
-                using var registration = _cts.Token.Register(cts.Cancel);
-
-                var reference = await _plotlyChart.DialogService.ShowMessageBoxAsync(new DialogParameters<MessageBoxContent>()
+                await _plotlyChart.InvokeAsync(() =>
                 {
-                    Content = new MessageBoxContent
-                    {
-                        Intent = MessageBoxIntent.Info,
-                        Icon = new Icons.Filled.Size24.Info(),
-                        IconColor = Color.Info,
-                        Message = $"Waiting for trace {OtlpHelpers.ToShortenedId(traceId)} to load...",
-                    },
-                    DialogType = DialogType.MessageBox,
-                    PrimaryAction = string.Empty,
-                    SecondaryAction = "Cancel"
+                    _plotlyChart.NavigationManager.NavigateTo(DashboardUrls.TraceDetailUrl(traceId, spanId));
                 });
-
-                // Task that polls for the span to be available.
-                var waitForTraceTask = Task.Run(async () =>
-                {
-                    while (!cts.IsCancellationRequested)
-                    {
-                        span = _plotlyChart.GetSpan(traceId, spanId);
-                        if (span != null)
-                        {
-                            await reference.CloseAsync(DialogResult.Ok<bool>(true));
-                        }
-                        else
-                        {
-                            await Task.Delay(TimeSpan.FromSeconds(0.5), cts.Token);
-                        }
-                    }
-                });
-
-                var result = await reference.Result;
-                cts.Cancel();
-
-                await TaskHelpers.WaitIgnoreCancelAsync(waitForTraceTask);
-
-                if (result.Cancelled)
-                {
-                    // Dialog was canceled before span was ready. Exit without navigating.
-                    return;
-                }
             }
-
-            await _plotlyChart.InvokeAsync(() =>
-            {
-                _plotlyChart.NavigationManager.NavigateTo(DashboardUrls.TraceDetailUrl(traceId, spanId));
-            });
         }
     }
 }

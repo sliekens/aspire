@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using System.Diagnostics;
+using Aspire.Dashboard.Otlp.Model;
 
 namespace Aspire.Dashboard.Components.Controls.Chart;
 
@@ -21,4 +22,5 @@ public class Exemplar
     public double Value { get; init; }
     public string? TraceId { get; init; }
     public string? SpanId { get; init; }
+    public OtlpSpan? Span { get; init; }
 }

@@ -8,6 +8,7 @@ using Aspire.Dashboard.Extensions;
 using Aspire.Dashboard.Model;
 using Aspire.Dashboard.Otlp.Model;
 using Aspire.Dashboard.Otlp.Model.MetricValues;
+using Aspire.Dashboard.Otlp.Storage;
 using Aspire.Dashboard.Resources;
 using Aspire.Dashboard.Utils;
 using Microsoft.AspNetCore.Components;
@@ -36,6 +37,9 @@ public abstract class ChartBase : ComponentBase
     [Inject]
     public required BrowserTimeProvider TimeProvider { get; init; }
 
+    [Inject]
+    public required TelemetryRepository TelemetryRepository { get; init; }
+
     [Parameter, EditorRequired]
     public required InstrumentViewModel InstrumentViewModel { get; set; }
 
@@ -44,6 +48,13 @@ public abstract class ChartBase : ComponentBase
 
     [Parameter]
     public required List<OtlpApplication> Applications { get; set; }
+
+    // Stores a cache of the last set of spans returned as exemplars.
+    // This dictionary is replaced each time the chart is updated.
+    private Dictionary<SpanKey, OtlpSpan> _currentCache = new Dictionary<SpanKey, OtlpSpan>();
+    private Dictionary<SpanKey, OtlpSpan> _newCache = new Dictionary<SpanKey, OtlpSpan>();
+
+    private readonly record struct SpanKey(string TraceId, string SpanId);
 
     protected override void OnInitialized()
     {
@@ -229,13 +240,25 @@ public abstract class ChartBase : ComponentBase
                                 continue;
                             }
 
+                            var key = new SpanKey(exemplar.TraceId, exemplar.SpanId);
+                            if (!_currentCache.TryGetValue(key, out var span))
+                            {
+                                span = GetSpan(exemplar.TraceId, exemplar.SpanId);
+                            }
+
+                            if (span != null)
+                            {
+                                _newCache[key] = span;
+                            }
+
                             var exemplarStart = TimeProvider.ToLocalDateTimeOffset(exemplar.Start);
                             exemplars.Add(new Exemplar
                             {
                                 Start = exemplarStart,
                                 Value = exemplar.Value,
                                 TraceId = exemplar.TraceId,
-                                SpanId = exemplar.SpanId
+                                SpanId = exemplar.SpanId,
+                                Span = span
                             });
                         }
                     }
@@ -458,7 +481,16 @@ public abstract class ChartBase : ComponentBase
             (traces, xValues, exemplars) = CalculateHistogramValues(InstrumentViewModel.MatchedDimensions, GraphPointCount, tickUpdate, inProgressDataTime, unit);
         }
 
+        // Replace cache for next update.
+        _currentCache = _newCache;
+        _newCache = new Dictionary<SpanKey, OtlpSpan>();
+
         await OnChartUpdated(traces, xValues, exemplars, tickUpdate, inProgressDataTime);
+    }
+
+    protected OtlpSpan? GetSpan(string traceId, string spanId)
+    {
+        return MetricsHelpers.GetSpan(TelemetryRepository, traceId, spanId);
     }
 
     private DateTimeOffset GetCurrentDataTime()

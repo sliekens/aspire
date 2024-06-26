@@ -90,13 +90,16 @@ public partial class MetricTable : ChartBase
     {
         var vm = new MetricExemplarsDialogViewModel
         {
-            Exemplars = metric.Exemplars
+            Exemplars = metric.Exemplars,
+            Applications = Applications
         };
         var parameters = new DialogParameters
         {
             Title = "Exemplars",
             PrimaryAction = "Close",
-            SecondaryAction = string.Empty
+            SecondaryAction = string.Empty,
+            Width = "800px",
+            Height = "auto"
         };
         await DialogService.ShowDialogAsync<MetricsExemplarsDialog>(vm, parameters);
     }
