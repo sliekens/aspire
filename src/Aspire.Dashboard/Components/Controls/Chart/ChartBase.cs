@@ -219,49 +219,7 @@ public abstract class ChartBase : ComponentBase
                 {
                     var histogramValue = GetHistogramValue(metric);
 
-                    if (metric.HasExemplars)
-                    {
-                        foreach (var exemplar in metric.Exemplars)
-                        {
-                            var exists = false;
-                            foreach (var existingExemplar in exemplars)
-                            {
-                                if (exemplar.Start == existingExemplar.Start &&
-                                    exemplar.Value == existingExemplar.Value &&
-                                    exemplar.SpanId == existingExemplar.SpanId &&
-                                    exemplar.TraceId == existingExemplar.TraceId)
-                                {
-                                    exists = true;
-                                    break;
-                                }
-                            }
-                            if (exists)
-                            {
-                                continue;
-                            }
-
-                            var key = new SpanKey(exemplar.TraceId, exemplar.SpanId);
-                            if (!_currentCache.TryGetValue(key, out var span))
-                            {
-                                span = GetSpan(exemplar.TraceId, exemplar.SpanId);
-                            }
-
-                            if (span != null)
-                            {
-                                _newCache[key] = span;
-                            }
-
-                            var exemplarStart = TimeProvider.ToLocalDateTimeOffset(exemplar.Start);
-                            exemplars.Add(new Exemplar
-                            {
-                                Start = exemplarStart,
-                                Value = exemplar.Value,
-                                TraceId = exemplar.TraceId,
-                                SpanId = exemplar.SpanId,
-                                Span = span
-                            });
-                        }
-                    }
+                    AddExemplars(exemplars, metric);
 
                     // Only use the first recorded entry if it is the beginning of data.
                     // We can verify the first entry is the beginning of data by checking if the number of buckets equals the total count.
@@ -311,6 +269,53 @@ public abstract class ChartBase : ComponentBase
         return hasValue;
     }
 
+    private void AddExemplars(List<Exemplar> exemplars, MetricValueBase metric)
+    {
+        if (metric.HasExemplars)
+        {
+            foreach (var exemplar in metric.Exemplars)
+            {
+                var exists = false;
+                foreach (var existingExemplar in exemplars)
+                {
+                    if (exemplar.Start == existingExemplar.Start &&
+                        exemplar.Value == existingExemplar.Value &&
+                        exemplar.SpanId == existingExemplar.SpanId &&
+                        exemplar.TraceId == existingExemplar.TraceId)
+                    {
+                        exists = true;
+                        break;
+                    }
+                }
+                if (exists)
+                {
+                    continue;
+                }
+
+                var key = new SpanKey(exemplar.TraceId, exemplar.SpanId);
+                if (!_currentCache.TryGetValue(key, out var span))
+                {
+                    span = GetSpan(exemplar.TraceId, exemplar.SpanId);
+                }
+
+                if (span != null)
+                {
+                    _newCache[key] = span;
+                }
+
+                var exemplarStart = TimeProvider.ToLocalDateTimeOffset(exemplar.Start);
+                exemplars.Add(new Exemplar
+                {
+                    Start = exemplarStart,
+                    Value = exemplar.Value,
+                    TraceId = exemplar.TraceId,
+                    SpanId = exemplar.SpanId,
+                    Span = span
+                });
+            }
+        }
+    }
+
     private static ulong CountBuckets(HistogramValue histogramValue)
     {
         ulong value = 0ul;
@@ -351,11 +356,12 @@ public abstract class ChartBase : ComponentBase
         return explicitBounds[explicitBounds.Length - 1];
     }
 
-    private (List<ChartTrace> Y, List<DateTimeOffset> X) CalculateChartValues(List<DimensionScope> dimensions, int pointCount, bool tickUpdate, DateTimeOffset inProgressDataTime, string yLabel)
+    private (List<ChartTrace> Y, List<DateTimeOffset> X, List<Exemplar> Exemplars) CalculateChartValues(List<DimensionScope> dimensions, int pointCount, bool tickUpdate, DateTimeOffset inProgressDataTime, string yLabel)
     {
         var pointDuration = Duration / pointCount;
         var yValues = new List<double?>();
         var xValues = new List<DateTimeOffset>();
+        var exemplars = new List<Exemplar>();
         var startDate = _currentDataStartTime;
         DateTimeOffset? firstPointEndTime = null;
 
@@ -369,7 +375,7 @@ public abstract class ChartBase : ComponentBase
 
             xValues.Add(TimeProvider.ToLocalDateTimeOffset(end));
 
-            if (TryCalculatePoint(dimensions, start, end, out var tickPointValue))
+            if (TryCalculatePoint(dimensions, start, end, exemplars, out var tickPointValue))
             {
                 yValues.Add(tickPointValue);
             }
@@ -382,7 +388,7 @@ public abstract class ChartBase : ComponentBase
         yValues.Reverse();
         xValues.Reverse();
 
-        if (tickUpdate && TryCalculatePoint(dimensions, firstPointEndTime!.Value, inProgressDataTime, out var inProgressPointValue))
+        if (tickUpdate && TryCalculatePoint(dimensions, firstPointEndTime!.Value, inProgressDataTime, exemplars, out var inProgressPointValue))
         {
             yValues.Add(inProgressPointValue);
             xValues.Add(TimeProvider.ToLocalDateTimeOffset(inProgressDataTime));
@@ -407,10 +413,10 @@ public abstract class ChartBase : ComponentBase
             }
         }
 
-        return ([trace], xValues);
+        return ([trace], xValues, exemplars);
     }
 
-    private static bool TryCalculatePoint(List<DimensionScope> dimensions, DateTimeOffset start, DateTimeOffset end, out double pointValue)
+    private bool TryCalculatePoint(List<DimensionScope> dimensions, DateTimeOffset start, DateTimeOffset end, List<Exemplar> exemplars, out double pointValue)
     {
         var hasValue = false;
         pointValue = 0d;
@@ -435,6 +441,8 @@ public abstract class ChartBase : ComponentBase
                     dimensionValue = Math.Max(value, dimensionValue);
                     hasValue = true;
                 }
+
+                AddExemplars(exemplars, metric);
             }
 
             pointValue += dimensionValue;
@@ -473,8 +481,10 @@ public abstract class ChartBase : ComponentBase
         List<Exemplar> exemplars;
         if (InstrumentViewModel.Instrument?.Type != OtlpInstrumentType.Histogram || InstrumentViewModel.ShowCount)
         {
-            (traces, xValues) = CalculateChartValues(InstrumentViewModel.MatchedDimensions, GraphPointCount, tickUpdate, inProgressDataTime, unit);
-            exemplars = new List<Exemplar>();
+            (traces, xValues, exemplars) = CalculateChartValues(InstrumentViewModel.MatchedDimensions, GraphPointCount, tickUpdate, inProgressDataTime, unit);
+
+            // TODO: Exemplars on non-histogram charts doesn't work well. Don't display for now.
+            exemplars.Clear();
         }
         else
         {

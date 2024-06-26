@@ -21,7 +21,13 @@ public static class MetricsHelpers
         return trace.Spans.FirstOrDefault(s => s.SpanId == spanId);
     }
 
-    public static async Task<bool> WaitForSpanToBeAvailableAsync(string traceId, string spanId, Func<string, string, OtlpSpan?> getSpan, IDialogService dialogService, CancellationToken cancellationToken)
+    public static async Task<bool> WaitForSpanToBeAvailableAsync(
+        string traceId,
+        string spanId,
+        Func<string, string, OtlpSpan?> getSpan,
+        IDialogService dialogService,
+        Func<Func<Task>, Task> dispatcher,
+        CancellationToken cancellationToken)
     {
         var span = getSpan(traceId, spanId);
 
@@ -53,7 +59,10 @@ public static class MetricsHelpers
                     span = getSpan(traceId, spanId);
                     if (span != null)
                     {
-                        await reference.CloseAsync(DialogResult.Ok<bool>(true)).ConfigureAwait(false);
+                        await dispatcher(async () =>
+                        {
+                            await reference.CloseAsync(DialogResult.Ok<bool>(true)).ConfigureAwait(false);
+                        }).ConfigureAwait(false);
                     }
                     else
                     {

@@ -6,30 +6,33 @@
 @using Aspire.Dashboard.Utils
 @using Aspire.Dashboard.Extensions
 @using System.Globalization
+@implements IDialogContentComponent<MetricExemplarsDialogViewModel>
 
 @inject IStringLocalizer<Dialogs> Loc
 
-<FluentDataGrid Items="@MetricView"
-                ItemSize="46"
-                GridTemplateColumns="2fr 1fr 1fr 1fr"
-                TGridItem="Exemplar">
-    <ChildContent>
-        <TemplateColumn Title="Trace" TooltipText="@(context => GetTitle(context))" Tooltip="true">
-            <span style="padding-left:5px; border-left-width: 5px; border-left-style: solid; border-left-color: @(context.Span != null ? ColorGenerator.Instance.GetColorHexByKey(OtlpApplication.GetResourceName(context.Span.Source, Content.Applications)) : "transparent");">
-                @GetTitle(context)
-            </span>
-        </TemplateColumn>
-        <TemplateColumn Title="Timestamp" TooltipText="@(context => FormatHelpers.FormatDateTime(TimeProvider, TimeProvider.ToLocal(context.Start), MillisecondsDisplay.None, CultureInfo.CurrentCulture))" Tooltip="true">
-            @FormatHelpers.FormatTimeWithOptionalDate(TimeProvider, TimeProvider.ToLocal(context.Start), MillisecondsDisplay.Truncated)
-        </TemplateColumn>
-        <TemplateColumn Title="Value">
-            @FormatMetricValue(context.Value)
-        </TemplateColumn>
-        <TemplateColumn Title="Details">
-            <FluentButton Appearance="Appearance.Lightweight" OnClick="@(() => OnViewDetailsAsync(context))">View</FluentButton>
-        </TemplateColumn>
-    </ChildContent>
-    <EmptyContent>
-        <FluentIcon Icon="Icons.Regular.Size24.ChartMultiple" />&nbsp;@Loc[nameof(ControlsStrings.MetricTableNoMetricsFound)]
-    </EmptyContent>
-</FluentDataGrid>
+<div style="max-height: 42vh; overflow-y: auto;">
+    <FluentDataGrid Items="@MetricView"
+                    ItemSize="46"
+                    GridTemplateColumns="2fr 1fr 1fr 1fr"
+                    TGridItem="Exemplar">
+        <ChildContent>
+            <TemplateColumn Title="Trace" TooltipText="@(context => GetTitle(context))" Tooltip="true">
+                <span style="padding-left:5px; border-left-width: 5px; border-left-style: solid; border-left-color: @(context.Span != null ? ColorGenerator.Instance.GetColorHexByKey(OtlpApplication.GetResourceName(context.Span.Source, Content.Applications)) : "transparent");">
+                    @GetTitle(context)
+                </span>
+            </TemplateColumn>
+            <TemplateColumn Title="Timestamp" TooltipText="@(context => FormatHelpers.FormatDateTime(TimeProvider, TimeProvider.ToLocal(context.Start), MillisecondsDisplay.None, CultureInfo.CurrentCulture))" Tooltip="true">
+                @FormatHelpers.FormatTimeWithOptionalDate(TimeProvider, TimeProvider.ToLocal(context.Start), MillisecondsDisplay.Truncated)
+            </TemplateColumn>
+            <TemplateColumn Title="Value">
+                @FormatMetricValue(context.Value)
+            </TemplateColumn>
+            <TemplateColumn Title="Details">
+                <FluentButton Appearance="Appearance.Lightweight" OnClick="@(() => OnViewDetailsAsync(context))">View</FluentButton>
+            </TemplateColumn>
+        </ChildContent>
+        <EmptyContent>
+            <FluentIcon Icon="Icons.Regular.Size24.ChartMultiple" />&nbsp;@Loc[nameof(ControlsStrings.MetricTableNoMetricsFound)]
+        </EmptyContent>
+    </FluentDataGrid>
+</div>

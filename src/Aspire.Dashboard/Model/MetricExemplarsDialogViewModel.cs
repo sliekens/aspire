@@ -10,4 +10,5 @@ public sealed class MetricExemplarsDialogViewModel
 {
     public required List<Exemplar> Exemplars { get; init; }
     public required List<OtlpApplication> Applications { get; init; }
+    public required OtlpInstrument Instrument { get; init; }
 }

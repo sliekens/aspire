@@ -91,7 +91,8 @@ public partial class MetricTable : ChartBase
         var vm = new MetricExemplarsDialogViewModel
         {
             Exemplars = metric.Exemplars,
-            Applications = Applications
+            Applications = Applications,
+            Instrument = InstrumentViewModel.Instrument!
         };
         var parameters = new DialogParameters
         {

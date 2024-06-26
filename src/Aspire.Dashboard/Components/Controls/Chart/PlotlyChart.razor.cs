@@ -147,6 +147,7 @@ public partial class PlotlyChart : ChartBase, IDisposable
                 spanId,
                 _plotlyChart.GetSpan,
                 _plotlyChart.DialogService,
+                _plotlyChart.InvokeAsync,
                 _cts.Token).ConfigureAwait(false);
 
             if (available)

@@ -13,7 +13,7 @@ using Microsoft.FluentUI.AspNetCore.Components;
 
 namespace Aspire.Dashboard.Components.Dialogs;
 
-public partial class MetricsExemplarsDialog : IDialogContentComponent<MetricExemplarsDialogViewModel>
+public partial class MetricsExemplarsDialog
 {
     [CascadingParameter]
     public FluentDialog Dialog { get; set; } = default!;
@@ -35,14 +35,6 @@ public partial class MetricsExemplarsDialog : IDialogContentComponent<MetricExem
 
     public IQueryable<Exemplar> MetricView => Content.Exemplars.AsQueryable();
 
-    protected override void OnInitialized()
-    {
-    }
-
-    protected override void OnParametersSet()
-    {
-    }
-
     public async Task OnViewDetailsAsync(Exemplar exemplar)
     {
         var available = await MetricsHelpers.WaitForSpanToBeAvailableAsync(
@@ -50,6 +42,7 @@ public partial class MetricsExemplarsDialog : IDialogContentComponent<MetricExem
             spanId: exemplar.SpanId!,
             getSpan: (traceId, spanId) => MetricsHelpers.GetSpan(TelemetryRepository, traceId, spanId),
             DialogService,
+            InvokeAsync,
             CancellationToken.None).ConfigureAwait(false);
 
         if (available)
@@ -65,8 +58,19 @@ public partial class MetricsExemplarsDialog : IDialogContentComponent<MetricExem
             : $"Trace: {OtlpHelpers.ToShortenedId(exemplar.TraceId!)}";
     }
 
-    private static string FormatMetricValue(double? value)
+    private string FormatMetricValue(double? value)
     {
-        return value is null ? string.Empty : value.Value.ToString("F3", CultureInfo.CurrentCulture);
+        if (value is null)
+        {
+            return string.Empty;
+        }
+
+        var formattedValue = value.Value.ToString("F3", CultureInfo.CurrentCulture);
+        if (!string.IsNullOrEmpty(Content.Instrument.Unit))
+        {
+            formattedValue += Content.Instrument.Unit.TrimStart('{').TrimEnd('}');
+        }
+
+        return formattedValue;
     }
 }
