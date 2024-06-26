@@ -341,7 +341,6 @@ window.initializeChart = function (id, traces, exemplarTrace, rangeStartTime, ra
             var point = currentPoint;
             var pointTraceData = point.data.traceData[point.pointIndex];
 
-            console.log(`ViewSpan - TraceId: ${pointTraceData.traceId}, SpanId: ${pointTraceData.spanId}`);
             chartInterop.invokeMethodAsync('ViewSpan', pointTraceData.traceId, pointTraceData.spanId);
         }
     });

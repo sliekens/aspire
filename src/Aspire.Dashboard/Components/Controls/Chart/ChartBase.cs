@@ -32,6 +32,9 @@ public abstract class ChartBase : ComponentBase
     public required IStringLocalizer<ControlsStrings> Loc { get; init; }
 
     [Inject]
+    public required IStringLocalizer<Resources.Dialogs> DialogsLoc { get; init; }
+
+    [Inject]
     public required IInstrumentUnitResolver InstrumentUnitResolver { get; init; }
 
     [Inject]
@@ -107,7 +110,7 @@ public abstract class ChartBase : ComponentBase
         return InvokeAsync(StateHasChanged);
     }
 
-    private (List<ChartTrace> Y, List<DateTimeOffset> X, List<Exemplar> Exemplars) CalculateHistogramValues(List<DimensionScope> dimensions, int pointCount, bool tickUpdate, DateTimeOffset inProgressDataTime, string yLabel)
+    private (List<ChartTrace> Y, List<DateTimeOffset> X, List<ChartExemplar> Exemplars) CalculateHistogramValues(List<DimensionScope> dimensions, int pointCount, bool tickUpdate, DateTimeOffset inProgressDataTime, string yLabel)
     {
         var pointDuration = Duration / pointCount;
         var traces = new Dictionary<int, ChartTrace>
@@ -117,7 +120,7 @@ public abstract class ChartBase : ComponentBase
             [99] = new() { Name = $"P99 {yLabel}", Percentile = 99 }
         };
         var xValues = new List<DateTimeOffset>();
-        var exemplars = new List<Exemplar>();
+        var exemplars = new List<ChartExemplar>();
         var startDate = _currentDataStartTime;
         DateTimeOffset? firstPointEndTime = null;
         DateTimeOffset? lastPointStartTime = null;
@@ -199,7 +202,7 @@ public abstract class ChartBase : ComponentBase
         throw new InvalidOperationException("Unexpected metric type: " + metric.GetType());
     }
 
-    internal bool TryCalculateHistogramPoints(List<DimensionScope> dimensions, DateTimeOffset start, DateTimeOffset end, Dictionary<int, ChartTrace> traces, List<Exemplar> exemplars)
+    internal bool TryCalculateHistogramPoints(List<DimensionScope> dimensions, DateTimeOffset start, DateTimeOffset end, Dictionary<int, ChartTrace> traces, List<ChartExemplar> exemplars)
     {
         var hasValue = false;
 
@@ -269,7 +272,7 @@ public abstract class ChartBase : ComponentBase
         return hasValue;
     }
 
-    private void AddExemplars(List<Exemplar> exemplars, MetricValueBase metric)
+    private void AddExemplars(List<ChartExemplar> exemplars, MetricValueBase metric)
     {
         if (metric.HasExemplars)
         {
@@ -308,7 +311,7 @@ public abstract class ChartBase : ComponentBase
                 }
 
                 var exemplarStart = TimeProvider.ToLocalDateTimeOffset(exemplar.Start);
-                exemplars.Add(new Exemplar
+                exemplars.Add(new ChartExemplar
                 {
                     Start = exemplarStart,
                     Value = exemplar.Value,
@@ -360,12 +363,12 @@ public abstract class ChartBase : ComponentBase
         return explicitBounds[explicitBounds.Length - 1];
     }
 
-    private (List<ChartTrace> Y, List<DateTimeOffset> X, List<Exemplar> Exemplars) CalculateChartValues(List<DimensionScope> dimensions, int pointCount, bool tickUpdate, DateTimeOffset inProgressDataTime, string yLabel)
+    private (List<ChartTrace> Y, List<DateTimeOffset> X, List<ChartExemplar> Exemplars) CalculateChartValues(List<DimensionScope> dimensions, int pointCount, bool tickUpdate, DateTimeOffset inProgressDataTime, string yLabel)
     {
         var pointDuration = Duration / pointCount;
         var yValues = new List<double?>();
         var xValues = new List<DateTimeOffset>();
-        var exemplars = new List<Exemplar>();
+        var exemplars = new List<ChartExemplar>();
         var startDate = _currentDataStartTime;
         DateTimeOffset? firstPointEndTime = null;
 
@@ -420,7 +423,7 @@ public abstract class ChartBase : ComponentBase
         return ([trace], xValues, exemplars);
     }
 
-    private bool TryCalculatePoint(List<DimensionScope> dimensions, DateTimeOffset start, DateTimeOffset end, List<Exemplar> exemplars, out double pointValue)
+    private bool TryCalculatePoint(List<DimensionScope> dimensions, DateTimeOffset start, DateTimeOffset end, List<ChartExemplar> exemplars, out double pointValue)
     {
         var hasValue = false;
         pointValue = 0d;
@@ -482,7 +485,7 @@ public abstract class ChartBase : ComponentBase
 
         List<ChartTrace> traces;
         List<DateTimeOffset> xValues;
-        List<Exemplar> exemplars;
+        List<ChartExemplar> exemplars;
         if (InstrumentViewModel.Instrument?.Type != OtlpInstrumentType.Histogram || InstrumentViewModel.ShowCount)
         {
             (traces, xValues, exemplars) = CalculateChartValues(InstrumentViewModel.MatchedDimensions, GraphPointCount, tickUpdate, inProgressDataTime, unit);
@@ -517,5 +520,5 @@ public abstract class ChartBase : ComponentBase
         return InstrumentUnitResolver.ResolveDisplayedUnit(instrument, titleCase: true, pluralize: true);
     }
 
-    protected abstract Task OnChartUpdated(List<ChartTrace> traces, List<DateTimeOffset> xValues, List<Exemplar> exemplars, bool tickUpdate, DateTimeOffset inProgressDataTime);
+    protected abstract Task OnChartUpdated(List<ChartTrace> traces, List<DateTimeOffset> xValues, List<ChartExemplar> exemplars, bool tickUpdate, DateTimeOffset inProgressDataTime);
 }

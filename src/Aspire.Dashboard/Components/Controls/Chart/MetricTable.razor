@@ -79,14 +79,11 @@
             }
             @if (_exemplars.Count > 0)
             {
-                <TemplateColumn Title="Exemplars">
-                    @{
-                        var id = $"metricTableExemplarButton-{context.DateTime.Ticks}-{Guid.NewGuid()}";
-                    }
+                <TemplateColumn Title="@Loc[nameof(ControlsStrings.MetricTableExemplarsColumnHeader)]">
                     @if (context.Exemplars.Count > 0)
                     {
                         <FluentButton Appearance="Appearance.Accent"
-                                      Id="@id"
+                                      aria-label="@Loc[nameof(ControlsStrings.MetricTableViewExemplarsLabel)]"
                                       @onclick="() => OpenExemplarsDialogAsync(context)">@context.Exemplars.Count</FluentButton>
                     }
                     else

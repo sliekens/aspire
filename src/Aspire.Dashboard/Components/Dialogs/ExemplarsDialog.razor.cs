@@ -13,13 +13,13 @@ using Microsoft.FluentUI.AspNetCore.Components;
 
 namespace Aspire.Dashboard.Components.Dialogs;
 
-public partial class MetricsExemplarsDialog : IDisposable
+public partial class ExemplarsDialog : IDisposable
 {
     [CascadingParameter]
     public FluentDialog Dialog { get; set; } = default!;
 
     [Parameter]
-    public MetricExemplarsDialogViewModel Content { get; set; } = default!;
+    public ExemplarsDialogViewModel Content { get; set; } = default!;
 
     [Inject]
     public required BrowserTimeProvider TimeProvider { get; init; }
@@ -33,11 +33,11 @@ public partial class MetricsExemplarsDialog : IDisposable
     [Inject]
     public required TelemetryRepository TelemetryRepository { get; init; }
 
-    public IQueryable<Exemplar> MetricView => Content.Exemplars.AsQueryable();
+    public IQueryable<ChartExemplar> MetricView => Content.Exemplars.AsQueryable();
 
     private readonly CancellationTokenSource _cts = new();
 
-    public async Task OnViewDetailsAsync(Exemplar exemplar)
+    public async Task OnViewDetailsAsync(ChartExemplar exemplar)
     {
         var available = await MetricsHelpers.WaitForSpanToBeAvailableAsync(
             traceId: exemplar.TraceId,
@@ -45,6 +45,7 @@ public partial class MetricsExemplarsDialog : IDisposable
             getSpan: (traceId, spanId) => MetricsHelpers.GetSpan(TelemetryRepository, traceId, spanId),
             DialogService,
             InvokeAsync,
+            Loc,
             _cts.Token).ConfigureAwait(false);
 
         if (available)
@@ -53,11 +54,11 @@ public partial class MetricsExemplarsDialog : IDisposable
         }
     }
 
-    private string GetTitle(Exemplar exemplar)
+    private string GetTitle(ChartExemplar exemplar)
     {
         return (exemplar.Span != null)
             ? SpanWaterfallViewModel.GetTitle(exemplar.Span, Content.Applications)
-            : $"Trace: {OtlpHelpers.ToShortenedId(exemplar.TraceId)}";
+            : $"{Loc[nameof(Resources.Dialogs.ExemplarsDialogTrace)]}: {OtlpHelpers.ToShortenedId(exemplar.TraceId)}";
     }
 
     private string FormatMetricValue(double? value)

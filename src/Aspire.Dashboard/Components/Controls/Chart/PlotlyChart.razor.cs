@@ -8,6 +8,7 @@ using Aspire.Dashboard.Extensions;
 using Aspire.Dashboard.Model;
 using Aspire.Dashboard.Model.Otlp;
 using Aspire.Dashboard.Otlp.Model;
+using Aspire.Dashboard.Resources;
 using Aspire.Dashboard.Utils;
 using Microsoft.AspNetCore.Components;
 using Microsoft.FluentUI.AspNetCore.Components;
@@ -35,10 +36,14 @@ public partial class PlotlyChart : ChartBase, IDisposable
         {
             formattedValue += " " + InstrumentUnitResolver.ResolveDisplayedUnit(instrument, titleCase: false, pluralize: yValue != 1);
         }
-        return $"<b>{HttpUtility.HtmlEncode(title)}</b><br />Value: {formattedValue}<br />Time: {FormatHelpers.FormatTime(TimeProvider, TimeProvider.ToLocal(xValue))}";
+        return $"""
+                <b>{HttpUtility.HtmlEncode(title)}</b><br />
+                {Loc[nameof(ControlsStrings.PlotlyChartValue)]}: {formattedValue}<br />
+                {Loc[nameof(ControlsStrings.PlotlyChartTime)]}: {FormatHelpers.FormatTime(TimeProvider, TimeProvider.ToLocal(xValue))}
+                """;
     }
 
-    protected override async Task OnChartUpdated(List<ChartTrace> traces, List<DateTimeOffset> xValues, List<Exemplar> exemplars, bool tickUpdate, DateTimeOffset inProgressDataTime)
+    protected override async Task OnChartUpdated(List<ChartTrace> traces, List<DateTimeOffset> xValues, List<ChartExemplar> exemplars, bool tickUpdate, DateTimeOffset inProgressDataTime)
     {
         var traceDtos = traces.Select(t => new PlotlyTrace
         {
@@ -51,7 +56,7 @@ public partial class PlotlyChart : ChartBase, IDisposable
 
         var exemplarTraceDto = new PlotlyTrace
         {
-            Name = "Exemplars",
+            Name = Loc[nameof(ControlsStrings.PlotlyChartExemplars)],
             Y = new List<double?>(),
             X = new List<DateTimeOffset>(),
             Tooltips = new List<string?>(),
@@ -62,7 +67,7 @@ public partial class PlotlyChart : ChartBase, IDisposable
         {
             var title = exemplar.Span != null
                 ? SpanWaterfallViewModel.GetTitle(exemplar.Span, Applications)
-                : $"Trace: {OtlpHelpers.ToShortenedId(exemplar.TraceId)}";
+                : $"{Loc[nameof(ControlsStrings.PlotlyChartTrace)]}: {OtlpHelpers.ToShortenedId(exemplar.TraceId)}";
             var tooltip = FormatTooltip(title, exemplar.Value, exemplar.Start);
 
             exemplarTraceDto.X.Add(exemplar.Start);
@@ -143,6 +148,7 @@ public partial class PlotlyChart : ChartBase, IDisposable
                 _plotlyChart.GetSpan,
                 _plotlyChart.DialogService,
                 _plotlyChart.InvokeAsync,
+                _plotlyChart.DialogsLoc,
                 _cts.Token).ConfigureAwait(false);
 
             if (available)

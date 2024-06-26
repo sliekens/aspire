@@ -6,9 +6,9 @@ using Aspire.Dashboard.Otlp.Model;
 
 namespace Aspire.Dashboard.Model;
 
-public sealed class MetricExemplarsDialogViewModel
+public sealed class ExemplarsDialogViewModel
 {
-    public required List<Exemplar> Exemplars { get; init; }
+    public required List<ChartExemplar> Exemplars { get; init; }
     public required List<OtlpApplication> Applications { get; init; }
     public required OtlpInstrument Instrument { get; init; }
 }

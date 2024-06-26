@@ -1,9 +1,12 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
 
+using System.Globalization;
 using Aspire.Dashboard.Otlp.Model;
 using Aspire.Dashboard.Otlp.Storage;
+using Aspire.Dashboard.Resources;
 using Aspire.Dashboard.Utils;
+using Microsoft.Extensions.Localization;
 using Microsoft.FluentUI.AspNetCore.Components;
 
 namespace Aspire.Dashboard.Model;
@@ -27,6 +30,7 @@ public static class MetricsHelpers
         Func<string, string, OtlpSpan?> getSpan,
         IDialogService dialogService,
         Func<Func<Task>, Task> dispatcher,
+        IStringLocalizer<Dialogs> loc,
         CancellationToken cancellationToken)
     {
         var span = getSpan(traceId, spanId);
@@ -44,11 +48,11 @@ public static class MetricsHelpers
                     Intent = MessageBoxIntent.Info,
                     Icon = new Icons.Filled.Size24.Info(),
                     IconColor = Color.Info,
-                    Message = $"Waiting for trace {OtlpHelpers.ToShortenedId(traceId)} to load...",
+                    Message = string.Format(CultureInfo.InvariantCulture, loc[nameof(Dialogs.OpenTraceDialogMessage)], OtlpHelpers.ToShortenedId(traceId)),
                 },
                 DialogType = DialogType.MessageBox,
                 PrimaryAction = string.Empty,
-                SecondaryAction = "Cancel"
+                SecondaryAction = loc[nameof(Dialogs.OpenTraceDialogCancelButtonText)]
             }).ConfigureAwait(false);
 
             // Task that polls for the span to be available.
