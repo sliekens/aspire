@@ -60,11 +60,6 @@ public partial class PlotlyChart : ChartBase, IDisposable
 
         foreach (var exemplar in exemplars)
         {
-            if (exemplar.TraceId == null || exemplar.SpanId == null)
-            {
-                continue;
-            }
-
             var title = exemplar.Span != null
                 ? SpanWaterfallViewModel.GetTitle(exemplar.Span, Applications)
                 : $"Trace: {OtlpHelpers.ToShortenedId(exemplar.TraceId)}";

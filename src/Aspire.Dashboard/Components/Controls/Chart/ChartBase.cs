@@ -275,6 +275,9 @@ public abstract class ChartBase : ComponentBase
         {
             foreach (var exemplar in metric.Exemplars)
             {
+                // TODO: Exemplars are duplicated on metrics in some scenarios.
+                // This is a quick fix to ensure a distinct collection of metrics are displayed in the UI.
+                // Investigation is needed into why there are duplicates.
                 var exists = false;
                 foreach (var existingExemplar in exemplars)
                 {
@@ -292,12 +295,13 @@ public abstract class ChartBase : ComponentBase
                     continue;
                 }
 
+                // Try to find span the the local cache first.
+                // This is done to avoid scanning a potentially large trace collection in repository.
                 var key = new SpanKey(exemplar.TraceId, exemplar.SpanId);
                 if (!_currentCache.TryGetValue(key, out var span))
                 {
                     span = GetSpan(exemplar.TraceId, exemplar.SpanId);
                 }
-
                 if (span != null)
                 {
                     _newCache[key] = span;

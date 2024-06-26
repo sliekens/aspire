@@ -180,7 +180,6 @@ function fixTraceLineRendering(chartDiv) {
 }
 
 window.updateChart = function (id, traces, exemplarTrace, rangeStartTime, rangeEndTime) {
-    //return;
     var chartContainerDiv = document.getElementById(id);
     var chartDiv = chartContainerDiv.firstChild;
 

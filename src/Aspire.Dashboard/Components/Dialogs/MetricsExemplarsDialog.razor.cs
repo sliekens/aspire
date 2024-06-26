@@ -13,7 +13,7 @@ using Microsoft.FluentUI.AspNetCore.Components;
 
 namespace Aspire.Dashboard.Components.Dialogs;
 
-public partial class MetricsExemplarsDialog
+public partial class MetricsExemplarsDialog : IDisposable
 {
     [CascadingParameter]
     public FluentDialog Dialog { get; set; } = default!;
@@ -35,19 +35,21 @@ public partial class MetricsExemplarsDialog
 
     public IQueryable<Exemplar> MetricView => Content.Exemplars.AsQueryable();
 
+    private readonly CancellationTokenSource _cts = new();
+
     public async Task OnViewDetailsAsync(Exemplar exemplar)
     {
         var available = await MetricsHelpers.WaitForSpanToBeAvailableAsync(
-            traceId: exemplar.TraceId!,
-            spanId: exemplar.SpanId!,
+            traceId: exemplar.TraceId,
+            spanId: exemplar.SpanId,
             getSpan: (traceId, spanId) => MetricsHelpers.GetSpan(TelemetryRepository, traceId, spanId),
             DialogService,
             InvokeAsync,
-            CancellationToken.None).ConfigureAwait(false);
+            _cts.Token).ConfigureAwait(false);
 
         if (available)
         {
-            NavigationManager.NavigateTo(DashboardUrls.TraceDetailUrl(exemplar.TraceId!, spanId: exemplar.SpanId));
+            NavigationManager.NavigateTo(DashboardUrls.TraceDetailUrl(exemplar.TraceId, spanId: exemplar.SpanId));
         }
     }
 
@@ -55,7 +57,7 @@ public partial class MetricsExemplarsDialog
     {
         return (exemplar.Span != null)
             ? SpanWaterfallViewModel.GetTitle(exemplar.Span, Content.Applications)
-            : $"Trace: {OtlpHelpers.ToShortenedId(exemplar.TraceId!)}";
+            : $"Trace: {OtlpHelpers.ToShortenedId(exemplar.TraceId)}";
     }
 
     private string FormatMetricValue(double? value)
@@ -72,5 +74,10 @@ public partial class MetricsExemplarsDialog
         }
 
         return formattedValue;
+    }
+
+    public void Dispose()
+    {
+        _cts.Dispose();
     }
 }

@@ -18,9 +18,9 @@ public sealed class ChartTrace
 [DebuggerDisplay("Start = {Start}, Value = {Value}, TraceId = {TraceId}, SpanId = {SpanId}")]
 public class Exemplar
 {
-    public DateTimeOffset Start { get; init; }
-    public double Value { get; init; }
-    public string? TraceId { get; init; }
-    public string? SpanId { get; init; }
-    public OtlpSpan? Span { get; init; }
+    public required DateTimeOffset Start { get; init; }
+    public required double Value { get; init; }
+    public required string TraceId { get; init; }
+    public required string SpanId { get; init; }
+    public required OtlpSpan? Span { get; init; }
 }

@@ -117,6 +117,12 @@ public class DimensionScope
         {
             foreach (var exemplar in exemplars)
             {
+                // Can't do anything useful with exemplars without a linked trace. Filter them out.
+                if (exemplar.TraceId == null || exemplar.SpanId == null)
+                {
+                    continue;
+                }
+
                 var start = OtlpHelpers.UnixNanoSecondsToDateTime(exemplar.TimeUnixNano);
                 var exemplarValue = exemplar.HasAsDouble ? exemplar.AsDouble : exemplar.AsInt;
 
