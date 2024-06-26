@@ -48,7 +48,7 @@ public partial class PlotlyChart : ChartBase, IDisposable
         return $"<b>{HttpUtility.HtmlEncode(title)}</b><br />Value: {formattedValue}<br />Time: {FormatHelpers.FormatTime(TimeProvider, TimeProvider.ToLocal(xValue))}";
     }
 
-    protected override async Task OnChartUpdated(List<ChartTrace> traces, List<DateTimeOffset> xValues, List<ExemplarPoint> exemplarPoints, bool tickUpdate, DateTimeOffset inProgressDataTime)
+    protected override async Task OnChartUpdated(List<ChartTrace> traces, List<DateTimeOffset> xValues, List<Exemplar> exemplars, bool tickUpdate, DateTimeOffset inProgressDataTime)
     {
         var traceDtos = traces.Select(t => new PlotlyTrace
         {
@@ -71,17 +71,17 @@ public partial class PlotlyChart : ChartBase, IDisposable
             TraceData = new List<object?>()
         };
 
-        foreach (var exemplarPoint in exemplarPoints)
+        foreach (var exemplar in exemplars)
         {
-            if (exemplarPoint.TraceId == null || exemplarPoint.SpanId == null)
+            if (exemplar.TraceId == null || exemplar.SpanId == null)
             {
                 continue;
             }
 
-            var key = new SpanKey(exemplarPoint.TraceId, exemplarPoint.SpanId);
+            var key = new SpanKey(exemplar.TraceId, exemplar.SpanId);
             if (!currentCache.TryGetValue(key, out var span))
             {
-                span = GetSpan(exemplarPoint.TraceId, exemplarPoint.SpanId);
+                span = GetSpan(exemplar.TraceId, exemplar.SpanId);
             }
 
             if (span != null)
@@ -91,13 +91,13 @@ public partial class PlotlyChart : ChartBase, IDisposable
 
             var title = span != null
                 ? SpanWaterfallViewModel.GetTitle(span, Applications)
-                : $"Trace: {OtlpHelpers.ToShortenedId(exemplarPoint.TraceId)}";
-            var tooltip = FormatTooltip(title, exemplarPoint.Value, exemplarPoint.Start);
+                : $"Trace: {OtlpHelpers.ToShortenedId(exemplar.TraceId)}";
+            var tooltip = FormatTooltip(title, exemplar.Value, exemplar.Start);
 
-            exemplarTraceDto.X.Add(exemplarPoint.Start);
-            exemplarTraceDto.Y.Add(exemplarPoint.Value);
+            exemplarTraceDto.X.Add(exemplar.Start);
+            exemplarTraceDto.Y.Add(exemplar.Value);
             exemplarTraceDto.Tooltips.Add(tooltip);
-            exemplarTraceDto.TraceData.Add(new { TraceId = exemplarPoint.TraceId, SpanId = exemplarPoint.SpanId });
+            exemplarTraceDto.TraceData.Add(new { TraceId = exemplar.TraceId, SpanId = exemplar.SpanId });
         }
 
         _traceCache = newCache;

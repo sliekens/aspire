@@ -96,7 +96,7 @@ public abstract class ChartBase : ComponentBase
         return InvokeAsync(StateHasChanged);
     }
 
-    private (List<ChartTrace> Y, List<DateTimeOffset> X, List<ExemplarPoint> ExemplarPoints) CalculateHistogramValues(List<DimensionScope> dimensions, int pointCount, bool tickUpdate, DateTimeOffset inProgressDataTime, string yLabel)
+    private (List<ChartTrace> Y, List<DateTimeOffset> X, List<Exemplar> Exemplars) CalculateHistogramValues(List<DimensionScope> dimensions, int pointCount, bool tickUpdate, DateTimeOffset inProgressDataTime, string yLabel)
     {
         var pointDuration = Duration / pointCount;
         var traces = new Dictionary<int, ChartTrace>
@@ -106,7 +106,7 @@ public abstract class ChartBase : ComponentBase
             [99] = new() { Name = $"P99 {yLabel}", Percentile = 99 }
         };
         var xValues = new List<DateTimeOffset>();
-        var exemplarPoints = new List<ExemplarPoint>();
+        var exemplars = new List<Exemplar>();
         var startDate = _currentDataStartTime;
         DateTimeOffset? firstPointEndTime = null;
         DateTimeOffset? lastPointStartTime = null;
@@ -122,7 +122,7 @@ public abstract class ChartBase : ComponentBase
 
             xValues.Add(TimeProvider.ToLocalDateTimeOffset(end));
 
-            if (!TryCalculateHistogramPoints(dimensions, start, end, traces, exemplarPoints))
+            if (!TryCalculateHistogramPoints(dimensions, start, end, traces, exemplars))
             {
                 foreach (var trace in traces)
                 {
@@ -137,7 +137,7 @@ public abstract class ChartBase : ComponentBase
         }
         xValues.Reverse();
 
-        if (tickUpdate && TryCalculateHistogramPoints(dimensions, firstPointEndTime!.Value, inProgressDataTime, traces, exemplarPoints))
+        if (tickUpdate && TryCalculateHistogramPoints(dimensions, firstPointEndTime!.Value, inProgressDataTime, traces, exemplars))
         {
             xValues.Add(TimeProvider.ToLocalDateTimeOffset(inProgressDataTime));
         }
@@ -168,9 +168,9 @@ public abstract class ChartBase : ComponentBase
             previousValues = currentTrace;
         }
 
-        exemplarPoints = exemplarPoints.Where(p => p.Start <= startDate && p.Start >= lastPointStartTime!.Value).ToList();
+        exemplars = exemplars.Where(p => p.Start <= startDate && p.Start >= lastPointStartTime!.Value).OrderBy(p => p.Start).ToList();
 
-        return (traces.Select(kvp => kvp.Value).ToList(), xValues, exemplarPoints);
+        return (traces.Select(kvp => kvp.Value).ToList(), xValues, exemplars);
     }
 
     private string FormatTooltip(string name, double yValue, DateTimeOffset xValue)
@@ -188,7 +188,7 @@ public abstract class ChartBase : ComponentBase
         throw new InvalidOperationException("Unexpected metric type: " + metric.GetType());
     }
 
-    internal bool TryCalculateHistogramPoints(List<DimensionScope> dimensions, DateTimeOffset start, DateTimeOffset end, Dictionary<int, ChartTrace> traces, List<ExemplarPoint> exemplarPoints)
+    internal bool TryCalculateHistogramPoints(List<DimensionScope> dimensions, DateTimeOffset start, DateTimeOffset end, Dictionary<int, ChartTrace> traces, List<Exemplar> exemplars)
     {
         var hasValue = false;
 
@@ -212,8 +212,25 @@ public abstract class ChartBase : ComponentBase
                     {
                         foreach (var exemplar in metric.Exemplars)
                         {
+                            var exists = false;
+                            foreach (var existingExemplar in exemplars)
+                            {
+                                if (exemplar.Start == existingExemplar.Start &&
+                                    exemplar.Value == existingExemplar.Value &&
+                                    exemplar.SpanId == existingExemplar.SpanId &&
+                                    exemplar.TraceId == existingExemplar.TraceId)
+                                {
+                                    exists = true;
+                                    break;
+                                }
+                            }
+                            if (exists)
+                            {
+                                continue;
+                            }
+
                             var exemplarStart = TimeProvider.ToLocalDateTimeOffset(exemplar.Start);
-                            exemplarPoints.Add(new ExemplarPoint
+                            exemplars.Add(new Exemplar
                             {
                                 Start = exemplarStart,
                                 Value = exemplar.Value,
@@ -430,18 +447,18 @@ public abstract class ChartBase : ComponentBase
 
         List<ChartTrace> traces;
         List<DateTimeOffset> xValues;
-        List<ExemplarPoint> exemplarPoints;
+        List<Exemplar> exemplars;
         if (InstrumentViewModel.Instrument?.Type != OtlpInstrumentType.Histogram || InstrumentViewModel.ShowCount)
         {
             (traces, xValues) = CalculateChartValues(InstrumentViewModel.MatchedDimensions, GraphPointCount, tickUpdate, inProgressDataTime, unit);
-            exemplarPoints = new List<ExemplarPoint>();
+            exemplars = new List<Exemplar>();
         }
         else
         {
-            (traces, xValues, exemplarPoints) = CalculateHistogramValues(InstrumentViewModel.MatchedDimensions, GraphPointCount, tickUpdate, inProgressDataTime, unit);
+            (traces, xValues, exemplars) = CalculateHistogramValues(InstrumentViewModel.MatchedDimensions, GraphPointCount, tickUpdate, inProgressDataTime, unit);
         }
 
-        await OnChartUpdated(traces, xValues, exemplarPoints, tickUpdate, inProgressDataTime);
+        await OnChartUpdated(traces, xValues, exemplars, tickUpdate, inProgressDataTime);
     }
 
     private DateTimeOffset GetCurrentDataTime()
@@ -454,5 +471,5 @@ public abstract class ChartBase : ComponentBase
         return InstrumentUnitResolver.ResolveDisplayedUnit(instrument, titleCase: true, pluralize: true);
     }
 
-    protected abstract Task OnChartUpdated(List<ChartTrace> traces, List<DateTimeOffset> xValues, List<ExemplarPoint> exemplarPoints, bool tickUpdate, DateTimeOffset inProgressDataTime);
+    protected abstract Task OnChartUpdated(List<ChartTrace> traces, List<DateTimeOffset> xValues, List<Exemplar> exemplars, bool tickUpdate, DateTimeOffset inProgressDataTime);
 }

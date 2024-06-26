@@ -32,10 +32,11 @@ public abstract class MetricValueBase
     protected abstract MetricValueBase Clone();
 }
 
+[DebuggerDisplay("Start = {Start}, Value = {Value}, SpanId = {SpanId}, TraceId = {TraceId}, Attributes = {Attributes.Count}")]
 public sealed class MetricsExemplar
 {
-    public required double Value { get; init; }
     public required DateTime Start { get; init; }
+    public required double Value { get; init; }
     public required string SpanId { get; init; }
     public required string TraceId { get; init; }
     public required KeyValuePair<string, string>[] Attributes { get; init; }

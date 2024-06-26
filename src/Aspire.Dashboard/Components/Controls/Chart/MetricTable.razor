@@ -11,13 +11,17 @@
     // these colors line up with P50/P90/P99 colors for the plotly graph
     var percentileColumns = new List<(int Percentile, string UnderlineColor)> { (50, "#89B5D3"), (90, "#F9B980"), (99, "#8FC98F") };
     var columnCount = ShowPercentiles() ? percentileColumns.Count + 1 : 2;
+    if (_exemplars.Count > 0)
+    {
+        columnCount++;
+    }
 }
 
 <div id="metric-table-container" style="height: 40vh; overflow-y: auto; margin-bottom: 20px; max-width:1200px;">
     @* ItemKey is to preserve row focus by associating rows with their associated time *@
     <FluentDataGrid
         Items="@_metricsView"
-        ItemSize="35"
+        ItemSize="46"
         Virtualize="true"
         GridTemplateColumns="@string.Join(" ", Enumerable.Repeat("1fr", columnCount))"
         ItemKey="@(item => item.DateTime)">
@@ -70,6 +74,24 @@
                         {
                             <FluentIcon Style="vertical-align: text-bottom" Value="@icon" Title="@title"/>
                         }
+                    }
+                </TemplateColumn>
+            }
+            @if (_exemplars.Count > 0)
+            {
+                <TemplateColumn Title="Exemplars">
+                    @{
+                        var id = $"metricTableExemplarButton-{context.DateTime.Ticks}-{Guid.NewGuid()}";
+                    }
+                    @if (context.Exemplars.Count > 0)
+                    {
+                        <FluentButton Appearance="Appearance.Accent"
+                                      Id="@id"
+                                      @onclick="() => OpenExemplarsDialogAsync(context)">@context.Exemplars.Count</FluentButton>
+                    }
+                    else
+                    {
+                        <span>0</span>
                     }
                 </TemplateColumn>
             }
