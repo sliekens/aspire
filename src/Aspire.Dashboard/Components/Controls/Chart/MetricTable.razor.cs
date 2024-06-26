@@ -115,9 +115,7 @@ public partial class MetricTable : ChartBase
         for (var i = 0; i < xValues.Count; i++)
         {
             var xValue = xValues[i];
-            DateTimeOffset? nextXValue = (i + 1 < xValues.Count) ? xValues[i + 1] : null;
-
-            KeyValuePair<DateTimeOffset, MetricViewBase>? previousMetric = newMetrics.LastOrDefault(dt => dt.Key < xValue);
+            var previousMetric = newMetrics.LastOrDefault(dt => dt.Key < xValue).Value;
 
             if (IsHistogramInstrument() && !_showCount)
             {
@@ -127,7 +125,7 @@ public partial class MetricTable : ChartBase
                 {
                     var (percentile, traceValue) = kvp;
                     if (traceValue is not null
-                        && previousMetric?.Value is HistogramMetricView histogramMetricView
+                        && previousMetric is HistogramMetricView histogramMetricView
                         && histogramMetricView.Percentiles[percentile].Value is { } previousPercentileValue)
                     {
                         return traceValue.Value - previousPercentileValue;
@@ -169,7 +167,7 @@ public partial class MetricTable : ChartBase
             {
                 var trace = traces.Single();
                 var yValue = trace.Values[i];
-                var valueDiff = yValue is not null && (previousMetric?.Value as MetricValueView)?.Value is { } previousValue ? yValue - previousValue : yValue;
+                var valueDiff = yValue is not null && (previousMetric as MetricValueView)?.Value is { } previousValue ? yValue - previousValue : yValue;
 
                 if (yValue is null)
                 {
@@ -209,8 +207,8 @@ public partial class MetricTable : ChartBase
 
         Debug.Assert(exemplars.Count == newMetrics.Sum(m => m.Value.Exemplars.Count), $"Expected {exemplars.Count} exemplars but got {newMetrics.Sum(m => m.Value.Exemplars.Count)} exemplars.");
 
-        DateTimeOffset? latestCurrentMetric = _metrics.Keys.LastOrDefault();
-        addedXValues = newMetrics.Keys.Where(newKey => newKey > latestCurrentMetric).ToHashSet();
+        var latestCurrentMetric = _metrics.Keys.OfType<DateTimeOffset?>().LastOrDefault();
+        addedXValues = newMetrics.Keys.Where(newKey => newKey > latestCurrentMetric || latestCurrentMetric == null).ToHashSet();
         return newMetrics;
     }
 
