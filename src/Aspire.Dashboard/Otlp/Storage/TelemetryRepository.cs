@@ -16,38 +16,6 @@ using static OpenTelemetry.Proto.Trace.V1.Span.Types;
 
 namespace Aspire.Dashboard.Otlp.Storage;
 
-public readonly record struct ApplicationKey(string Name, string InstanceId)
-{
-    public bool EqualsCompositeName(string name)
-    {
-        // Composite name has the format "{Name}-{InstanceId}".
-        if (name.Length != Name.Length + InstanceId.Length + 1)
-        {
-            return false;
-        }
-
-        if (!name.AsSpan(0, Name.Length).Equals(Name, StringComparisons.ResourceName))
-        {
-            return false;
-        }
-        if (name[Name.Length] != '-')
-        {
-            return false;
-        }
-        if (!name.AsSpan(Name.Length + 1, InstanceId.Length).Equals(InstanceId, StringComparisons.ResourceName))
-        {
-            return false;
-        }
-
-        return true;
-    }
-
-    public override string ToString()
-    {
-        return $"{Name}-{InstanceId}";
-    }
-}
-
 public sealed class TelemetryRepository
 {
     private readonly object _lock = new();
