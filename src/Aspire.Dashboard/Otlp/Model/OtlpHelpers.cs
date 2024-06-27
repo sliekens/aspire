@@ -16,7 +16,7 @@ namespace Aspire.Dashboard.Otlp.Model;
 
 public static class OtlpHelpers
 {
-    public static ApplicationKey? GetApplicationKey(this Resource resource)
+    public static ApplicationKey GetApplicationKey(this Resource resource)
     {
         string? serviceName = null;
         string? serviceInstanceId = null;
@@ -39,11 +39,6 @@ public static class OtlpHelpers
             }
         }
 
-        if (string.IsNullOrEmpty(serviceName) && string.IsNullOrEmpty(serviceInstanceId))
-        {
-            return null;
-        }
-
         // Fallback to unknown_service if service name isn't specified.
         // https://github.com/open-telemetry/opentelemetry-specification/issues/3210
         if (string.IsNullOrEmpty(serviceName))
@@ -55,7 +50,8 @@ public static class OtlpHelpers
             }
         }
 
-        return new ApplicationKey(serviceName, serviceInstanceId ?? string.Empty);
+        // service.instance.id is recommended but not required.
+        return new ApplicationKey(serviceName, serviceInstanceId ?? serviceName);
     }
 
     public static string ToShortenedId(string id) => TruncateString(id, maxLength: 7);

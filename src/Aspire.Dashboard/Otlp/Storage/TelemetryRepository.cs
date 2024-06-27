@@ -190,19 +190,15 @@ public sealed class TelemetryRepository
         ArgumentNullException.ThrowIfNull(resource);
 
         var key = resource.GetApplicationKey();
-        if (key is null)
-        {
-            throw new InvalidOperationException($"Resource does not have {OtlpApplication.SERVICE_NAME} or {OtlpApplication.SERVICE_INSTANCE_ID} attributes.");
-        }
 
         // Fast path.
-        if (_applications.TryGetValue(key.Value, out var application))
+        if (_applications.TryGetValue(key, out var application))
         {
             return application;
         }
 
         // Slower get or add path.
-        (application, var isNew) = GetOrAddApplication(key.Value, resource);
+        (application, var isNew) = GetOrAddApplication(key, resource);
         if (isNew)
         {
             RaiseSubscriptionChanged(_applicationSubscriptions);
@@ -217,7 +213,7 @@ public sealed class TelemetryRepository
             var application = _applications.GetOrAdd(key, _ =>
             {
                 newApplication = true;
-                return new OtlpApplication(resource, _applications, _logger, _dashboardOptions.TelemetryLimits);
+                return new OtlpApplication(key.Name, key.InstanceId, resource, _logger, _dashboardOptions.TelemetryLimits);
             });
             return (application, newApplication);
         }

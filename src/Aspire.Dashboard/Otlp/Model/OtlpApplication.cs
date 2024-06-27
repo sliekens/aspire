@@ -32,7 +32,7 @@ public class OtlpApplication
 
     public KeyValuePair<string, string>[] Properties { get; }
 
-    public OtlpApplication(Resource resource, IReadOnlyDictionary<ApplicationKey, OtlpApplication> applications, ILogger logger, TelemetryLimitOptions options)
+    public OtlpApplication(string name, string instanceId, Resource resource, ILogger logger, TelemetryLimitOptions options)
     {
         var properties = new List<KeyValuePair<string, string>>();
         foreach (var attribute in resource.Attributes)
@@ -40,10 +40,8 @@ public class OtlpApplication
             switch (attribute.Key)
             {
                 case SERVICE_NAME:
-                    ApplicationName = attribute.Value.GetString();
-                    break;
                 case SERVICE_INSTANCE_ID:
-                    InstanceId = attribute.Value.GetString();
+                    // Values passed in via ctor and set to members. Don't add to properties collection.
                     break;
                 default:
                     properties.Add(new KeyValuePair<string, string>(attribute.Key, attribute.Value.GetString()));
@@ -52,18 +50,10 @@ public class OtlpApplication
             }
         }
         Properties = properties.ToArray();
-        if (string.IsNullOrEmpty(ApplicationName))
-        {
-            ApplicationName = "Unknown";
-        }
-        if (string.IsNullOrEmpty(InstanceId))
-        {
-            //
-            // NOTE: The service.instance.id value is a recommended attribute, but not required.
-            //       See: https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/resource/semantic_conventions/README.md#service-experimental
-            //
-            InstanceId = ApplicationName;
-        }
+
+        ApplicationName = name;
+        InstanceId = instanceId;
+
         _logger = logger;
         _options = options;
     }
