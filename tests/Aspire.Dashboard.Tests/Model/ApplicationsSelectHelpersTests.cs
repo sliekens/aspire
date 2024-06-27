@@ -5,6 +5,7 @@ using Aspire.Dashboard.Configuration;
 using Aspire.Dashboard.Model;
 using Aspire.Dashboard.Model.Otlp;
 using Aspire.Dashboard.Otlp.Model;
+using Aspire.Dashboard.Otlp.Storage;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging.Testing;
@@ -20,7 +21,7 @@ public sealed class ApplicationsSelectHelpersTests
     public void GetApplication_SameNameAsReplica_GetInstance()
     {
         // Arrange
-        var apps = new Dictionary<string, OtlpApplication>();
+        var apps = new Dictionary<ApplicationKey, OtlpApplication>();
 
         var appVMs = ApplicationsSelectHelpers.CreateApplications(new List<OtlpApplication>
         {
@@ -67,7 +68,7 @@ public sealed class ApplicationsSelectHelpersTests
     public void GetApplication_NameDifferentByCase_Merge()
     {
         // Arrange
-        var apps = new Dictionary<string, OtlpApplication>();
+        var apps = new Dictionary<ApplicationKey, OtlpApplication>();
 
         var appVMs = ApplicationsSelectHelpers.CreateApplications(new List<OtlpApplication>
         {
@@ -115,8 +116,8 @@ public sealed class ApplicationsSelectHelpersTests
 
         var appVMs = new List<SelectViewModel<ResourceTypeDetails>>
         {
-            new SelectViewModel<ResourceTypeDetails>() { Name = "test", Id = ResourceTypeDetails.CreateSingleton("test-abc") },
-            new SelectViewModel<ResourceTypeDetails>() { Name = "test", Id = ResourceTypeDetails.CreateSingleton("test-def") }
+            new SelectViewModel<ResourceTypeDetails>() { Name = "test", Id = ResourceTypeDetails.CreateSingleton("test-abc", "test") },
+            new SelectViewModel<ResourceTypeDetails>() { Name = "test", Id = ResourceTypeDetails.CreateSingleton("test-def", "test") }
         };
 
         var testSink = new TestSink();
@@ -131,7 +132,7 @@ public sealed class ApplicationsSelectHelpersTests
         Assert.Single(testSink.Writes);
     }
 
-    private static OtlpApplication CreateOtlpApplication(Dictionary<string, OtlpApplication> apps, string name, string instanceId)
+    private static OtlpApplication CreateOtlpApplication(Dictionary<ApplicationKey, OtlpApplication> apps, string name, string instanceId)
     {
         return new OtlpApplication(new Resource
         {

@@ -3,6 +3,7 @@
 
 using System.Diagnostics;
 using Aspire.Dashboard.Configuration;
+using Aspire.Dashboard.Otlp.Storage;
 using Google.Protobuf.Collections;
 using OpenTelemetry.Proto.Common.V1;
 using OpenTelemetry.Proto.Metrics.V1;
@@ -15,9 +16,12 @@ public class OtlpApplication
 {
     public const string SERVICE_NAME = "service.name";
     public const string SERVICE_INSTANCE_ID = "service.instance.id";
+    public const string PROCESS_EXECUTABLE_NAME = "process.executable.name";
 
     public string ApplicationName { get; }
     public string InstanceId { get; }
+
+    public ApplicationKey ApplicationKey => new ApplicationKey(ApplicationName, InstanceId);
 
     private readonly ReaderWriterLockSlim _metricsLock = new();
     private readonly Dictionary<string, OtlpMeter> _meters = new();
@@ -28,7 +32,7 @@ public class OtlpApplication
 
     public KeyValuePair<string, string>[] Properties { get; }
 
-    public OtlpApplication(Resource resource, IReadOnlyDictionary<string, OtlpApplication> applications, ILogger logger, TelemetryLimitOptions options)
+    public OtlpApplication(Resource resource, IReadOnlyDictionary<ApplicationKey, OtlpApplication> applications, ILogger logger, TelemetryLimitOptions options)
     {
         var properties = new List<KeyValuePair<string, string>>();
         foreach (var attribute in resource.Attributes)

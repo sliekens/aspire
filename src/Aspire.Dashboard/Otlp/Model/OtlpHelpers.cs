@@ -16,28 +16,46 @@ namespace Aspire.Dashboard.Otlp.Model;
 
 public static class OtlpHelpers
 {
-    public static string? GetServiceId(this Resource resource)
+    public static ApplicationKey? GetApplicationKey(this Resource resource)
     {
         string? serviceName = null;
+        string? serviceInstanceId = null;
+        string? processExecutableName = null;
 
         for (var i = 0; i < resource.Attributes.Count; i++)
         {
             var attribute = resource.Attributes[i];
             if (attribute.Key == OtlpApplication.SERVICE_INSTANCE_ID)
             {
-                return attribute.Value.GetString();
+                serviceInstanceId = attribute.Value.GetString();
             }
             if (attribute.Key == OtlpApplication.SERVICE_NAME)
             {
                 serviceName = attribute.Value.GetString();
             }
+            if (attribute.Key == OtlpApplication.PROCESS_EXECUTABLE_NAME)
+            {
+                processExecutableName = attribute.Value.GetString();
+            }
         }
 
-        //
-        // NOTE: The service.instance.id value is a recommended attribute, but not required.
-        //       See: https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/resource/semantic_conventions/README.md#service-experimental
-        //
-        return serviceName;
+        if (string.IsNullOrEmpty(serviceName) && string.IsNullOrEmpty(serviceInstanceId))
+        {
+            return null;
+        }
+
+        // Fallback to unknown_service if service name isn't specified.
+        // https://github.com/open-telemetry/opentelemetry-specification/issues/3210
+        if (string.IsNullOrEmpty(serviceName))
+        {
+            serviceName = "unknown_service";
+            if (!string.IsNullOrEmpty(processExecutableName))
+            {
+                serviceName += ":" + processExecutableName;
+            }
+        }
+
+        return new ApplicationKey(serviceName, serviceInstanceId ?? string.Empty);
     }
 
     public static string ToShortenedId(string id) => TruncateString(id, maxLength: 7);
