@@ -11,6 +11,7 @@ public class ApplicationKeyTests
     [Theory]
     [InlineData("name", "instanceid", "name-instanceid")]
     [InlineData("name", "instanceid", "NAME-INSTANCEID")]
+    [InlineData("name", "752e1688-ca3c-45da-b48b-b2163296ac91", "name-752e1688-ca3c-45da-b48b-b2163296ac91")]
     public void EqualsCompositeName_Success(string name, string instanceId, string compositeName)
     {
         // Arrange
