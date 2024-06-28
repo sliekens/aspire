@@ -93,33 +93,6 @@ public sealed class TelemetryRepository
         }
     }
 
-    public int GetUnviewedErrorLogsCount(string? instanceId)
-    {
-        _logsLock.EnterReadLock();
-
-        try
-        {
-            if (string.IsNullOrEmpty(instanceId))
-            {
-                return _applicationUnviewedErrorLogs.Sum(kvp => kvp.Value);
-            }
-            var application = GetApplications().FirstOrDefault(a => a.InstanceId == instanceId);
-            if (application is not null)
-            {
-                _applicationUnviewedErrorLogs.TryGetValue(application, out var count);
-                return count;
-            }
-            else
-            {
-                return 0;
-            }
-        }
-        finally
-        {
-            _logsLock.ExitReadLock();
-        }
-    }
-
     internal void MarkViewedErrorLogs(ApplicationKey? key)
     {
         _logsLock.EnterWriteLock();
