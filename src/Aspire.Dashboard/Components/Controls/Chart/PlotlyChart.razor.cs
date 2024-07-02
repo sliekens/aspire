@@ -54,27 +54,7 @@ public partial class PlotlyChart : ChartBase, IDisposable
             TraceData = new List<object?>()
         }).ToArray();
 
-        var exemplarTraceDto = new PlotlyTrace
-        {
-            Name = Loc[nameof(ControlsStrings.PlotlyChartExemplars)],
-            Y = new List<double?>(),
-            X = new List<DateTimeOffset>(),
-            Tooltips = new List<string?>(),
-            TraceData = new List<object?>()
-        };
-
-        foreach (var exemplar in exemplars)
-        {
-            var title = exemplar.Span != null
-                ? SpanWaterfallViewModel.GetTitle(exemplar.Span, Applications)
-                : $"{Loc[nameof(ControlsStrings.PlotlyChartTrace)]}: {OtlpHelpers.ToShortenedId(exemplar.TraceId)}";
-            var tooltip = FormatTooltip(title, exemplar.Value, exemplar.Start);
-
-            exemplarTraceDto.X.Add(exemplar.Start);
-            exemplarTraceDto.Y.Add(exemplar.Value);
-            exemplarTraceDto.Tooltips.Add(tooltip);
-            exemplarTraceDto.TraceData.Add(new { TraceId = exemplar.TraceId, SpanId = exemplar.SpanId });
-        }
+        var exemplarTraceDto = CalculateExemplarsTrace(xValues, exemplars);
 
         if (!tickUpdate)
         {
@@ -109,6 +89,69 @@ public partial class PlotlyChart : ChartBase, IDisposable
                 TimeProvider.ToLocal(inProgressDataTime),
                 TimeProvider.ToLocal(inProgressDataTime - Duration)).ConfigureAwait(false);
         }
+    }
+
+    private PlotlyTrace CalculateExemplarsTrace(List<DateTimeOffset> xValues, List<ChartExemplar> exemplars)
+    {
+        // In local development there is no sampling of traces so there could be a very high number.
+        // Too many points on the graph will impact browser performance, and is not useful anyway as they will
+        // draw on top of each other and can't be used. Fix both of these problems by enforcing a maximum limit.
+        //
+        // Displaying up to a maximum number of exemplars per tick will display a continuous number of ticks across the graph.
+        const int MaxExemplarsPerTick = 20;
+
+        // Group exemplars into ticks based on xValues.
+        var exemplarGroups = new Dictionary<ExemplarGroupKey, List<ChartExemplar>>();
+        for (var i = 0; i <= xValues.Count; i++)
+        {
+            var start = i > 0 ? xValues[i - 1] : (DateTimeOffset?)null;
+            var end = i < xValues.Count ? xValues[i] : (DateTimeOffset?)null;
+            var g = new ExemplarGroupKey(start, end);
+
+            var groupExemplars = exemplars.Where(e => (e.Start >= g.Start || g.Start == null) && (e.Start < g.End || g.End == null)).ToList();
+
+            // When exemplars exceeds the limit then sample the exemplars to reduce data to the limit.
+            if (groupExemplars.Count > MaxExemplarsPerTick)
+            {
+                var step = (double)groupExemplars.Count / MaxExemplarsPerTick;
+
+                var sampledList = new List<ChartExemplar>(MaxExemplarsPerTick);
+                for (var j = 0; j < MaxExemplarsPerTick; j++)
+                {
+                    // Calculate the index to take from the original list
+                    var index = (int)Math.Floor(j * step);
+                    sampledList.Add(groupExemplars[index]);
+                }
+
+                groupExemplars = sampledList;
+            }
+
+            exemplarGroups.Add(g, groupExemplars);
+        }
+
+        var exemplarTraceDto = new PlotlyTrace
+        {
+            Name = Loc[nameof(ControlsStrings.PlotlyChartExemplars)],
+            Y = new List<double?>(),
+            X = new List<DateTimeOffset>(),
+            Tooltips = new List<string?>(),
+            TraceData = new List<object?>()
+        };
+
+        foreach (var exemplar in exemplarGroups.SelectMany(g => g.Value))
+        {
+            var title = exemplar.Span != null
+                ? SpanWaterfallViewModel.GetTitle(exemplar.Span, Applications)
+                : $"{Loc[nameof(ControlsStrings.PlotlyChartTrace)]}: {OtlpHelpers.ToShortenedId(exemplar.TraceId)}";
+            var tooltip = FormatTooltip(title, exemplar.Value, exemplar.Start);
+
+            exemplarTraceDto.X.Add(exemplar.Start);
+            exemplarTraceDto.Y.Add(exemplar.Value);
+            exemplarTraceDto.Tooltips.Add(tooltip);
+            exemplarTraceDto.TraceData.Add(new { TraceId = exemplar.TraceId, SpanId = exemplar.SpanId });
+        }
+
+        return exemplarTraceDto;
     }
 
     public void Dispose()
@@ -160,4 +203,6 @@ public partial class PlotlyChart : ChartBase, IDisposable
             }
         }
     }
+
+    private readonly record struct ExemplarGroupKey(DateTimeOffset? Start, DateTimeOffset? End);
 }
