@@ -93,6 +93,10 @@ public sealed class ExternalServiceResource : Resource
         {
             return new ArgumentException("The URI cannot contain a fragment.", nameof(uri));
         }
+        if (!string.IsNullOrEmpty(uri.Query))
+        {
+            return new ArgumentException("The URI cannot contain a query string.", nameof(uri));
+        }
         return null;
     }
 }

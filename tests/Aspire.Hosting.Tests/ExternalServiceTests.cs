@@ -54,10 +54,11 @@ public class ExternalServiceTests
     [InlineData("not-a-url")]
     [InlineData("")]
     [InlineData("https://example.com/path")]  // Invalid: missing trailing slash
-    [InlineData("https://example.com/path?query=value")]  // Invalid: missing trailing slash
+    [InlineData("https://example.com/path?query=value")]  // Invalid: has query string
     [InlineData("https://example.com#fragment")]  // Invalid: has fragment
     [InlineData("https://example.com/service")]  // Invalid: missing trailing slash
     [InlineData("https://example.com/service/sub")]  // Invalid: missing trailing slash
+    [InlineData("https://example.com/?query=1")]  // Invalid: has query string
     public void AddExternalServiceThrowsWithInvalidUrl(string invalidUrl)
     {
         using var builder = TestDistributedApplicationBuilder.Create();
@@ -92,7 +93,6 @@ public class ExternalServiceTests
     [InlineData("https://example.com:8080/")]
     [InlineData("https://gateway/orders-service/")]  // Path with trailing slash
     [InlineData("https://gateway/api/v1/")]  // Nested path with trailing slash
-    [InlineData("https://gateway/service/?query=1")]  // Path with query string and trailing slash
     public void AddExternalServiceAcceptsValidUrls(string validUrl)
     {
         using var builder = TestDistributedApplicationBuilder.Create();
@@ -294,6 +294,12 @@ public class ExternalServiceTests
         Assert.Null(fragmentUri);
         Assert.NotNull(fragmentMessage);
         Assert.Contains("fragment", fragmentMessage);
+
+        // Test query string rejection
+        Assert.False(ExternalServiceResource.UrlIsValidForExternalService("https://nuget.org/?query=1", out var queryUri, out var queryMessage));
+        Assert.Null(queryUri);
+        Assert.NotNull(queryMessage);
+        Assert.Contains("query", queryMessage);
     }
 
     [Fact]
@@ -471,7 +477,6 @@ public class ExternalServiceTests
     [InlineData("https://host/service/")]
     [InlineData("https://host/service/sub/")]
     [InlineData("https://host/service/sub/deep/")]
-    [InlineData("https://host/service/?query=1")]
     [InlineData("http://gateway:8080/api/v1/")]
     public void ExternalServiceAcceptsPathsWithTrailingSlash(string validUrl)
     {
@@ -506,6 +511,18 @@ public class ExternalServiceTests
 
         var ex = Assert.Throws<ArgumentException>(() => builder.AddExternalService("service", invalidUrl));
         Assert.Contains("fragment", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData("https://host/service/?query=1")]
+    [InlineData("https://host/?query=value")]
+    [InlineData("https://host/service/?key=value&other=data")]
+    public void ExternalServiceRejectsUrisWithQueryString(string invalidUrl)
+    {
+        using var builder = TestDistributedApplicationBuilder.Create();
+
+        var ex = Assert.Throws<ArgumentException>(() => builder.AddExternalService("service", invalidUrl));
+        Assert.Contains("query", ex.Message, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
