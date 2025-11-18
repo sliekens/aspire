@@ -235,4 +235,84 @@ public class AzureSqlServerResource : AzureProvisioningResource, IResourceWithCo
             infra.Add(scriptResource);
         }
     }
+
+    /// <summary>
+    /// Gets the host endpoint reference for this resource.
+    /// </summary>
+    public ReferenceExpression Host =>
+        InnerResource is not null ?
+            InnerResource.Host :
+            ReferenceExpression.Create($"{FullyQualifiedDomainName}");
+
+    /// <summary>
+    /// Gets the port endpoint reference for this resource.
+    /// </summary>
+    public ReferenceExpression Port =>
+        InnerResource is not null ?
+            InnerResource.Port :
+            ReferenceExpression.Create($"1433");
+
+    /// <summary>
+    /// Gets the connection URI expression for the SQL Server.
+    /// </summary>
+    /// <remarks>
+    /// Format: <c>mssql://{host}:{port}</c>.
+    /// </remarks>
+    public ReferenceExpression UriExpression =>
+        InnerResource is not null ?
+            InnerResource.UriExpression :
+            ReferenceExpression.Create($"mssql://{Host}:{Port}");
+
+    internal ReferenceExpression BuildJdbcConnectionString(string? databaseName = null)
+    {
+        if (InnerResource is not null)
+        {
+            return InnerResource.BuildJdbcConnectionString(databaseName);
+        }
+
+        var builder = new ReferenceExpressionBuilder();
+        builder.AppendLiteral("jdbc:sqlserver://");
+        builder.Append($"{Host}");
+        builder.AppendLiteral(":");
+        builder.Append($"{Port}");
+        builder.AppendLiteral(";encrypt=true;authentication=ActiveDirectoryDefault");
+
+        if (!string.IsNullOrEmpty(databaseName))
+        {
+            var databaseNameReference = ReferenceExpression.Create($"{databaseName:uri}");
+            builder.AppendLiteral(";databaseName=");
+            builder.Append($"{databaseNameReference}");
+        }
+
+        return builder.Build();
+    }
+
+    /// <summary>
+    /// Gets the JDBC connection string for the Azure SQL Server.
+    /// </summary>
+    /// <remarks>
+    /// <para>Format: <c>jdbc:sqlserver://{host}:{port};encrypt=true;authentication=ActiveDirectoryDefault</c>.</para>
+    /// <para>When running as a container, the JDBC connection string uses <c>trustServerCertificate=true</c> instead of <c>encrypt=true;authentication=ActiveDirectoryDefault</c>.</para>
+    /// </remarks>
+    public ReferenceExpression JdbcConnectionString => BuildJdbcConnectionString();
+
+    IEnumerable<KeyValuePair<string, ReferenceExpression>> IResourceWithConnectionString.GetConnectionProperties()
+    {
+        if (InnerResource is not null)
+        {
+            foreach (var property in InnerResource.GetConnectionProperties())
+            {
+                yield return property;
+            }
+            yield return new("Azure", ReferenceExpression.Create($"false"));
+        }
+        else
+        {
+            yield return new("Host", ReferenceExpression.Create($"{Host}"));
+            yield return new("Port", ReferenceExpression.Create($"{Port}"));
+            yield return new("Uri", UriExpression);
+            yield return new("JdbcConnectionString", JdbcConnectionString);
+            yield return new("Azure", ReferenceExpression.Create($"true"));
+        }
+    }
 }

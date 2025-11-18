@@ -204,4 +204,120 @@ public class AzurePostgresFlexibleServerResource(string name, Action<AzureResour
     // Assumes original has a value in PostgreSqlFlexibleServerPrincipalType, will fail at runtime if not
     static BicepValue<PostgreSqlFlexibleServerPrincipalType> ConvertPrincipalTypeDangerously(BicepValue<RoleManagementPrincipalType> original) =>
         original.Compile();
+
+    /// <summary>
+    /// Gets the host endpoint reference for this resource.
+    /// </summary>
+    public ReferenceExpression Host => 
+        InnerResource is not null ?
+            InnerResource.Host :
+            ReferenceExpression.Create($"{HostNameOutput}");
+
+    /// <summary>
+    /// Gets the port endpoint reference for this resource.
+    /// </summary>
+    public ReferenceExpression Port => 
+        InnerResource is not null ?
+            InnerResource.Port :
+            ReferenceExpression.Create($"5432");
+
+    /// <summary>
+    /// Gets the connection URI expression for the PostgreSQL server.
+    /// </summary>
+    /// <remarks>
+    /// Format: <c>postgresql://{user}:{password}@{host}:{port}</c> when password authentication is enabled.
+    /// Format: <c>postgresql://{host}:{port}</c> when using Entra ID authentication.
+    /// </remarks>
+    public ReferenceExpression UriExpression => BuildUri();
+
+    internal ReferenceExpression BuildUri(string? databaseName = null)
+    {
+        if (InnerResource is not null)
+        {
+            return InnerResource.BuildUri(databaseName);
+        }
+
+        var builder = new ReferenceExpressionBuilder();
+        builder.AppendLiteral("postgresql://");
+        if (UsePasswordAuthentication && UserName is not null && Password is not null)
+        {
+            builder.Append($"{UserName:uri}:{Password:uri}@{Host}:{Port}");
+        }
+        else
+        {
+            builder.Append($"{Host}:{Port}");
+        }
+
+        if (databaseName is not null)
+        {
+            builder.AppendLiteral("/");
+            builder.Append($"{databaseName:uri}");
+        }
+
+        return builder.Build();
+    }
+
+    internal ReferenceExpression BuildJdbcConnectionString(string? databaseName = null)
+    {
+        if (InnerResource is not null)
+        {
+            return InnerResource.BuildJdbcConnectionString(databaseName);
+        }
+
+        var builder = new ReferenceExpressionBuilder();
+        builder.AppendLiteral("jdbc:postgresql://");
+        builder.Append($"{Host}");
+        builder.AppendLiteral(":");
+        builder.Append($"{Port}");
+
+        if (databaseName is not null)
+        {
+            builder.Append($"/{databaseName:uri}");
+        }
+
+        if (!UsePasswordAuthentication)
+        {
+            builder.AppendLiteral("?sslmode=require&authenticationPluginClassName=com.azure.identity.extensions.jdbc.postgresql.AzurePostgresqlAuthenticationPlugin");
+        }
+
+        return builder.Build();
+    }
+
+    /// <summary>
+    /// Gets the JDBC connection string for the Azure PostgreSQL Flexible Server.
+    /// </summary>
+    /// <remarks>
+    /// <para>Format: <c>jdbc:postgresql://{host}:{port}?sslmode=require&amp;authenticationPluginClassName=com.azure.identity.extensions.jdbc.postgresql.AzurePostgresqlAuthenticationPlugin</c> when using Entra ID authentication.</para>
+    /// <para>Format: <c>jdbc:postgresql://{host}:{port}</c> when password authentication is enabled. User and password credentials are provided as separate <c>Username</c> and <c>Password</c> properties.</para>
+    /// <para>When running as a container, the JDBC connection string does not include the <c>sslmode</c> and <c>authenticationPluginClassName</c> parameters.</para>
+    /// </remarks>
+    public ReferenceExpression JdbcConnectionString => BuildJdbcConnectionString();
+
+    IEnumerable<KeyValuePair<string, ReferenceExpression>> IResourceWithConnectionString.GetConnectionProperties()
+    {
+        if (InnerResource is not null)
+        {
+            foreach (var property in InnerResource.GetConnectionProperties())
+            {
+                yield return property;
+            }
+            yield return new("Azure", ReferenceExpression.Create($"false"));
+        }
+        else
+        {
+            yield return new("Host", ReferenceExpression.Create($"{Host}"));
+            yield return new("Port", ReferenceExpression.Create($"{Port}"));
+            if (UserName is not null)
+            {
+                yield return new("Username", ReferenceExpression.Create($"{UserName}"));
+            }
+            if (Password is not null)
+            {
+                yield return new("Password", ReferenceExpression.Create($"{Password}"));
+            }
+            yield return new("Uri", UriExpression);
+            yield return new("JdbcConnectionString", JdbcConnectionString);
+            yield return new("Azure", ReferenceExpression.Create($"true"));
+        }
+    }
 }

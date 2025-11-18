@@ -85,6 +85,35 @@ var sqlSrv = builder.AddAzureSqlServer("sqlsrv")
     .RunAsContainer();
 ```
 
+## Connection Properties
+
+When you reference an Azure SQL Server resource using `WithReference`, the following connection properties are made available to the consuming project:
+
+### Azure SQL Server server
+
+The Azure SQL Server server resource exposes the following connection properties:
+
+| Property Name | Description |
+|---------------|-------------|
+| `Host` | The hostname or fully qualified domain name (FQDN) of the Azure SQL Server |
+| `Port` | The port number the SQL Server is listening on (1433 for Azure SQL) |
+| `Uri` | The connection URI in mssql:// format, with the format `mssql://{Host}:{Port}` |
+| `JdbcConnectionString` | JDBC-format connection string, with the format `jdbc:sqlserver://{Host}:{Port};encrypt=true;authentication=ActiveDirectoryDefault`. When running as a container, uses `trustServerCertificate=true` instead. |
+| `Azure` | A value indicating whether the resource is hosted on Azure (`true`) or running as a container (`false`) |
+
+### Azure SQL Server database
+
+The Azure SQL Server database resource inherits all properties from its parent `AzureSqlServerResource` and adds:
+
+| Property Name | Description |
+|---------------|-------------|
+| `Uri` | The connection URI in mssql:// format, with the format `mssql://{Host}:{Port}/{DatabaseName}` |
+| `JdbcConnectionString` | JDBC connection string with database name, with the format `jdbc:sqlserver://{Host}:{Port};encrypt=true;authentication=ActiveDirectoryDefault;databaseName={DatabaseName}`. When running as a container, uses `trustServerCertificate=true` instead. |
+| `Database` | The name of the database |
+| `Azure` | A value indicating whether the resource is hosted on Azure (`true`) or running as a container (`false`) |
+
+Aspire exposes each property as an environment variable named `[RESOURCE]_[PROPERTY]`. For instance, the `Uri` property of a resource called `sqldata` becomes `SQLDATA_URI`.
+
 ## Additional documentation
 
 * https://learn.microsoft.com/dotnet/framework/data/adonet/sql/

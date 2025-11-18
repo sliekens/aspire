@@ -54,6 +54,37 @@ The `WithReference` method configures a connection in the `MyService` project na
 builder.AddAzureNpgsqlDataSource("postgresdb");
 ```
 
+## Connection Properties
+
+When you reference an Azure PostgreSQL Flexible Server resource using `WithReference`, the following connection properties are made available to the consuming project:
+
+### Azure PostgreSQL Flexible Server
+
+The Azure PostgreSQL Flexible Server resource exposes the following connection properties:
+
+| Property Name | Description |
+|---------------|-------------|
+| `Host` | The hostname or fully qualified domain name (FQDN) of the Azure PostgreSQL server |
+| `Port` | The port number the PostgreSQL server is listening on (5432 for Azure PostgreSQL) |
+| `Username` | The username for authentication (only when password authentication is enabled) |
+| `Password` | The password for authentication (only when password authentication is enabled) |
+| `Uri` | The connection URI in postgresql:// format. When password authentication is enabled, the format is `postgresql://{Username}:{Password}@{Host}:{Port}`. When using Entra ID authentication, the format is `postgresql://{Host}:{Port}` |
+| `JdbcConnectionString` | JDBC-format connection string. When using Entra ID authentication, the format is `jdbc:postgresql://{Host}:{Port}?sslmode=require&authenticationPluginClassName=com.azure.identity.extensions.jdbc.postgresql.AzurePostgresqlAuthenticationPlugin`. When password authentication is enabled, the format is `jdbc:postgresql://{Host}:{Port}`. User and password credentials are provided as separate `Username` and `Password` properties when using password authentication. When running as a container, the JDBC connection string does not include the `sslmode` and `authenticationPluginClassName` parameters. |
+| `Azure` | A value indicating whether the resource is hosted on Azure (`true`) or running as a container (`false`) |
+
+### Azure PostgreSQL database
+
+The Azure PostgreSQL database resource inherits all properties from its parent `AzurePostgresFlexibleServerResource` and adds:
+
+| Property Name | Description |
+|---------------|-------------|
+| `Uri` | The connection URI in postgresql:// format. When password authentication is enabled, the format is `postgresql://{Username}:{Password}@{Host}:{Port}/{DatabaseName}`. When using Entra ID authentication, the format is `postgresql://{Host}:{Port}/{DatabaseName}` |
+| `JdbcConnectionString` | JDBC connection string with database name. When using Entra ID authentication, the format is `jdbc:postgresql://{Host}:{Port}/{DatabaseName}?sslmode=require&authenticationPluginClassName=com.azure.identity.extensions.jdbc.postgresql.AzurePostgresqlAuthenticationPlugin`. When password authentication is enabled, the format is `jdbc:postgresql://{Host}:{Port}/{DatabaseName}`. User and password credentials are provided as separate `Username` and `Password` properties when using password authentication. When running as a container, the JDBC connection string does not include the `sslmode` and `authenticationPluginClassName` parameters. |
+| `Database` | The name of the database |
+| `Azure` | A value indicating whether the resource is hosted on Azure (`true`) or running as a container (`false`) |
+
+Aspire exposes each property as an environment variable named `[RESOURCE]_[PROPERTY]`. For instance, the `Uri` property of a resource called `postgresdb` becomes `POSTGRESDB_URI`.
+
 ## Additional documentation
 
 * https://www.npgsql.org/doc/basic-usage.html

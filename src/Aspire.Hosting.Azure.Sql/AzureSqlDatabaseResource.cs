@@ -68,4 +68,45 @@ public class AzureSqlDatabaseResource(string name, string databaseName, AzureSql
 
         InnerResource = innerResource;
     }
+
+    /// <summary>
+    /// Gets the connection URI expression for the SQL Server database.
+    /// </summary>
+    /// <remarks>
+    /// Format: <c>mssql://{host}:{port}/{database}</c>.
+    /// </remarks>
+    public ReferenceExpression UriExpression =>
+        InnerResource is not null ?
+            InnerResource.UriExpression :
+            ReferenceExpression.Create($"{Parent.UriExpression}/{DatabaseName:uri}");
+
+    /// <summary>
+    /// Gets the JDBC connection string for the Azure SQL Server database.
+    /// </summary>
+    /// <remarks>
+    /// <para>Format: <c>jdbc:sqlserver://{host}:{port};encrypt=true;authentication=ActiveDirectoryDefault;databaseName={database}</c>.</para>
+    /// <para>When running as a container, the JDBC connection string uses <c>trustServerCertificate=true</c> instead of <c>encrypt=true;authentication=ActiveDirectoryDefault</c>.</para>
+    /// </remarks>
+    public ReferenceExpression JdbcConnectionString => Parent.BuildJdbcConnectionString(DatabaseName);
+
+    IEnumerable<KeyValuePair<string, ReferenceExpression>> IResourceWithConnectionString.GetConnectionProperties()
+    {
+        if (InnerResource is not null)
+        {
+            foreach (var property in InnerResource.GetConnectionProperties())
+            {
+                yield return property;
+            }
+            yield return new("Azure", ReferenceExpression.Create($"false"));
+        }
+        else
+        {
+            yield return new("Host", ReferenceExpression.Create($"{Parent.Host}"));
+            yield return new("Port", ReferenceExpression.Create($"{Parent.Port}"));
+            yield return new("Database", ReferenceExpression.Create($"{DatabaseName}"));
+            yield return new("Uri", UriExpression);
+            yield return new("JdbcConnectionString", JdbcConnectionString);
+            yield return new("Azure", ReferenceExpression.Create($"true"));
+        }
+    }
 }
