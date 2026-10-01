@@ -45,6 +45,78 @@ namespace Aspire.Dashboard.Resources {
             }
         }
 
+        public static string TerminalProgress {
+            get {
+                return ResourceManager.GetString("TerminalProgress", resourceCulture);
+            }
+        }
+
+        public static string TerminalPalette {
+            get {
+                return ResourceManager.GetString("TerminalPalette", resourceCulture);
+            }
+        }
+
+        public static string TerminalPaletteLabel {
+            get {
+                return ResourceManager.GetString("TerminalPaletteLabel", resourceCulture);
+            }
+        }
+
+        public static string TerminalPaletteLight {
+            get {
+                return ResourceManager.GetString("TerminalPaletteLight", resourceCulture);
+            }
+        }
+
+        public static string TerminalPaletteDark {
+            get {
+                return ResourceManager.GetString("TerminalPaletteDark", resourceCulture);
+            }
+        }
+
+        public static string TerminalSizeLabel {
+            get {
+                return ResourceManager.GetString("TerminalSizeLabel", resourceCulture);
+            }
+        }
+
+        public static string TerminalPaletteSaveFailed {
+            get {
+                return ResourceManager.GetString("TerminalPaletteSaveFailed", resourceCulture);
+            }
+        }
+
+        public static string TerminalCopyWorkingDirectory {
+            get {
+                return ResourceManager.GetString("TerminalCopyWorkingDirectory", resourceCulture);
+            }
+        }
+
+        public static string TerminalCopyTitle {
+            get {
+                return ResourceManager.GetString("TerminalCopyTitle", resourceCulture);
+            }
+        }
+
+        public static string TerminalCopyFailed {
+            get {
+                return ResourceManager.GetString("TerminalCopyFailed", resourceCulture);
+            }
+        }
+
+        public static string TerminalProgressError {
+            get {
+                return ResourceManager.GetString("TerminalProgressError", resourceCulture);
+            }
+        }
+
+        public static string TerminalProgressWarning {
+            get {
+                return ResourceManager.GetString("TerminalProgressWarning", resourceCulture);
+            }
+        }
+
         public static string TerminalTitle {
             get {
                 return ResourceManager.GetString("TerminalTitle", resourceCulture);
@@ -264,6 +336,33 @@ namespace Aspire.Dashboard.Resources {
         public static string TerminalDockTabs {
             get {
                 return ResourceManager.GetString("TerminalDockTabs", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Scroll terminal tabs left.
+        /// </summary>
+        public static string TerminalDockScrollLeft {
+            get {
+                return ResourceManager.GetString("TerminalDockScrollLeft", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Scroll terminal tabs right.
+        /// </summary>
+        public static string TerminalDockScrollRight {
+            get {
+                return ResourceManager.GetString("TerminalDockScrollRight", resourceCulture);
+            }
+        }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Drag to reorder tabs, or use Alt+Shift+Left or Alt+Shift+Right while a tab is focused..
+        /// </summary>
+        public static string TerminalDockReorderHelp {
+            get {
+                return ResourceManager.GetString("TerminalDockReorderHelp", resourceCulture);
             }
         }
 

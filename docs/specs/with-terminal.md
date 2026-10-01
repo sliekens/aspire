@@ -336,10 +336,14 @@ it does not lock the terminal, its creator's automation, or other viewers.
 ### Browser requirements and package pairing
 
 The dashboard uses `@hex1b/web-terminal` and the `Hex1b` NuGet package at
-exactly `0.168.0`. HWT1 is experimental state transfer
+exactly `0.171.0`. HWT1 is experimental state transfer
 between these paired packages, not a stable wire contract implemented by
-Aspire. Upgrade both together. The full npm `dist` tree is vendored, including
-module workers, relative imports, fonts and licenses.
+Aspire. Upgrade both together. The vendored runtime consists of one bundled
+JavaScript file for the client and both workers, a font, and two licenses.
+Worker roles use fragments on the bundled file URL rather than separate worker
+modules; the dashboard references the standalone vendored bundle for both.
+The 0.171 producer retains at most 200 command marks even when older backing
+text is still present; scrollback text is retained independently.
 
 The dashboard uses the package's automatic renderer selection: WebGPU is
 preferred, with WebGL2 used when WebGPU capabilities or device acquisition are
@@ -376,7 +380,10 @@ The package handles Ctrl/Cmd+click on authoritative OSC 8 hyperlinks in live
 output and history. HMP state replay preserves link destinations across late
 attachment and reconnect. It only opens absolute HTTP, HTTPS and mailto destinations
 with `noopener,noreferrer`; plain clicks and drags retain selection/application
-behavior. Aspire adds no custom opener or plain-text URL detection. See the
+behavior. Aspire also enables Hex1b's per-view plain-text HTTP/HTTPS URL detector
+with dashed underlines and a Ctrl/Cmd-click action that opens a new tab with
+`noopener,noreferrer`. Remote file paths and custom URI schemes are not enabled.
+See the
 [hyperlink PR](https://github.com/mitchdenny/hex1b/pull/489),
 [renderer PR](https://github.com/mitchdenny/hex1b/pull/491), and
 [hyperlink replay fix](https://github.com/mitchdenny/hex1b/pull/493).
@@ -450,7 +457,31 @@ input to the footer controls; <kbd>Shift+F6</kbd> moves focus to the preceding
 dashboard control. Hiding the hint preserves its space so focus changes do not
 resize the terminal or move the footer controls.
 
-Dock tabs share the Resources/Parameters tab styling. The dock resize handle
+Outside the dock, terminal headers keep a fixed icon slot before the workload title. Active progress
+uses a ring with the percentage in its tooltip, not inline text; otherwise the
+resource page shows its resource icon, and other surfaces use a terminal icon.
+Error and warning progress retain their accessible labels and theme colors.
+Working directories shorten in the middle when space is limited; UNC paths keep
+their server and share together or show no path if even the root cannot fit.
+The terminal's Light/Dark palette is an explicit browser preference, independent
+of the Dashboard theme. It defaults to Dark and can be changed in the terminal
+footer; Dashboard chrome still follows Settings theme changes.
+
+Dock tabs use the titles supplied when the terminals are created, not live workload
+titles. The dock does not show a separate workload title, icon, progress, or working
+directory alongside the tabs.
+
+Dock tabs share the Resources/Parameters tab styling. Drag a tab to reorder it,
+or focus its title and press Alt+Shift+Left/Right. Reordering keeps the active
+terminal and mounted viewers unchanged. The order is local to the dashboard
+session and survives recovery snapshots; newly discovered terminals append.
+Tabs stay on one row, with horizontal scrolling. Left/right buttons remain
+visible beside **Open in window**, disabled when there are no more tabs in
+that direction. A thin line between tabs indicates the drop position.
+Activating a tab brings its title and close button into view,
+and dragging near either edge scrolls the strip to reach off-screen tabs.
+
+The dock resize handle
 uses the dashboard's Fluent splitter styling, including neutral gray hover,
 drag and keyboard-focus feedback.
 
