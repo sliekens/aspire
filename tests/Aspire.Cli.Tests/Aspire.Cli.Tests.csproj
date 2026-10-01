@@ -53,7 +53,7 @@
     <PackageReference Include="NuGet.Credentials" VersionOverride="$(NuGetPackageVersionForCli)" />
     <PackageReference Include="NuGet.Protocol" VersionOverride="$(NuGetPackageVersionForCli)" />
     <PackageReference Include="NuGet.Resolver" VersionOverride="$(NuGetPackageVersionForCli)" />
-    <PackageReference Include="StreamJsonRpc" VersionOverride="$(StreamJsonRpcPackageVersionForCli)" />
+    <PackageReference Include="StreamJsonRpc" />
     <PackageReference Include="Verify.XunitV3" />
   </ItemGroup>
   <ItemGroup>
