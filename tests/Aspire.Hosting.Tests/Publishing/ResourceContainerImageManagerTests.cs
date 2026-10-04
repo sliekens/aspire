@@ -931,6 +931,7 @@ public class ResourceContainerImageBuilderTests(ITestOutputHelper output)
         var archivePath = Path.Combine(workspace.WorkspaceRoot.FullName, "program.tar.gz");
         File.WriteAllText(archivePath, "previous archive");
         var projectPath = Path.Combine(workspace.WorkspaceRoot.FullName, "program.csproj");
+        var callbackCount = 0;
         var resource = builder.AddResource(new ProjectResource("program"))
             .WithAnnotation(new TestProjectMetadata(projectPath))
             .WithAnnotation(new ContainerFilesDestinationAnnotation
@@ -940,6 +941,8 @@ public class ResourceContainerImageBuilderTests(ITestOutputHelper output)
             })
             .WithContainerBuildOptions(context =>
             {
+                callbackCount++;
+                context.AdditionalArguments.AddRange(["--cache-from", "type=registry,ref=cr.example.com/program:cache"]);
                 context.Destination = ContainerImageDestination.Archive;
                 context.ImageFormat = ContainerImageFormat.Docker;
                 context.OutputPath = archivePath;
@@ -956,6 +959,7 @@ public class ResourceContainerImageBuilderTests(ITestOutputHelper output)
             Assert.NotEqual(archivePath, options.OutputPath);
             Assert.True(Directory.Exists(options.OutputPath));
             Assert.True(options.RequiresLocalImageStore);
+            Assert.Equal(["--cache-from", "type=registry,ref=cr.example.com/program:cache"], options.AdditionalArguments);
             Assert.Equal(imageName, options.ImageName);
             Assert.StartsWith("aspire-layered-", options.Tag);
 
@@ -1000,6 +1004,7 @@ public class ResourceContainerImageBuilderTests(ITestOutputHelper output)
         Assert.Equal(
             new[] { $"{imageName}:{sdkTag}", $"{imageName}:{layeredOptions.Tag}" }.Order(StringComparer.Ordinal),
             containerRuntime.RemoveImageCalls.Order(StringComparer.Ordinal));
+        Assert.Equal(1, callbackCount);
         Assert.Empty(containerRuntime.TagImageCalls);
         Assert.False(Directory.Exists(layeredOptions.OutputPath));
     }
